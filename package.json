@@ -1,0 +1,13 @@
+{
+	"name": "controle-equipamentos-ti",
+	"version": "1.0.0",
+	"private": true,
+	"packageManager": "pnpm@9.15.9",
+	"scripts": {
+		"build:css": "tailwindcss -c tailwind.config.cjs -i ./src/tailwind.css -o ./assets/app.css --minify"
+	},
+	"devDependencies": {
+		"tailwindcss": "3.4.17",
+		"yaml": "2.8.1"
+	}
+}
