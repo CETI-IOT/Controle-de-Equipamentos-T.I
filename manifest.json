@@ -1,0 +1,44 @@
+{
+  "name": "Controle de Equipamentos TI",
+  "short_name": "Equip TI",
+  "description": "Sistema PWA para controle de empréstimos, devoluções e inventário com leitor de QR Code e Código de Barras",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f172a",
+  "theme_color": "#4338ca",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nova Retirada",
+      "short_name": "Retirada",
+      "description": "Registrar nova saída de equipamento",
+      "url": "./index.html?action=retirada",
+      "icons": [{ "src": "icons/icon.svg", "sizes": "512x512" }]
+    },
+    {
+      "name": "Devolução",
+      "short_name": "Devolver",
+      "description": "Registrar devolução de equipamento",
+      "url": "./index.html?action=devolucao",
+      "icons": [{ "src": "icons/icon.svg", "sizes": "512x512" }]
+    },
+    {
+      "name": "Escanear Código",
+      "short_name": "Escanear",
+      "description": "Abrir leitor de QR Code e Código de Barras",
+      "url": "./index.html?action=scan",
+      "icons": [{ "src": "icons/icon.svg", "sizes": "512x512" }]
+    }
+  ]
+}
+
