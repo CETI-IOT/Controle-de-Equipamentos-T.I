@@ -40,7 +40,7 @@ O site publicado fica acessível pela internet. Não inclua senhas, tokens ou in
 
 Cadastre equipamentos no inventário. Para cada retirada, informe o código do item e o solicitante; para devoluções, use o fluxo de devolução e registre observações quando necessário. O código do item abre seu histórico. A fila local sinaliza movimentações pendentes quando não há conexão.
 
-Leitura de códigos e impressão de etiquetas dependem das bibliotecas e permissões do navegador disponíveis na página. A planilha modelo continua disponível nas configurações para quem precisar configurar o Google Sheets.
+Leitura pela câmera usa o detector nativo do navegador quando disponível e inicia a câmera traseira antes de carregar a lista de câmeras. Um leitor USB ou sem fio Bluetooth que funcione como teclado pode ser usado diretamente: selecione o campo de patrimônio ou solicitante e escaneie. Com o leitor configurado para enviar Enter após a leitura, o foco avança para o próximo campo; o botão de registrar continua manual. A câmera requer permissão do navegador e conexão HTTPS. A planilha modelo continua disponível nas configurações para quem precisar configurar o Google Sheets.
 
 ## Verificação rápida
 
