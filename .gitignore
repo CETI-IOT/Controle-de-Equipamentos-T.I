@@ -1,0 +1,9 @@
+# Arquivos temporários e bloqueios criados pelo Excel
+~$*.xlsx
+~$*.xls
+~$*.xlsm
+
+# Metadados locais do Windows
+Thumbs.db
+Desktop.ini
+
