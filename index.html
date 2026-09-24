@@ -1,0 +1,1876 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Controle de Equipamentos - TI (PWA)</title>
+  
+  <!-- PWA Meta Tags -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#4338ca">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Equip TI">
+  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
+  <link rel="apple-touch-icon" href="./icons/icon.svg">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              800: '#3730a3',
+              900: '#312e81',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Html5-qrcode para leitura de QR Code e Código de Barras (1D e 2D) -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- SheetJS (XLSX) para Importação/Exportação Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- JsBarcode para Gerador de Código de Barras -->
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+  <!-- QRCode.js para Gerador de QR Code em Etiquetas -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+  <style>
+    /* Laser animado de leitura */
+    @keyframes scanline {
+      0% { transform: translateY(0); opacity: 0.9; }
+      50% { transform: translateY(160px); opacity: 1; }
+      100% { transform: translateY(0); opacity: 0.9; }
+    }
+    .scan-laser {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: #ec4899;
+      box-shadow: 0 0 12px #f43f5e, 0 0 4px #fb7185;
+      animation: scanline 2s infinite ease-in-out;
+    }
+    dialog::backdrop {
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(4px);
+    }
+    /* Estilos para impressão de etiquetas 7x3 cm (70mm x 30mm) */
+    @page {
+      size: 70mm 30mm;
+      margin: 0mm;
+    }
+    @media print {
+      html, body {
+        width: 70mm !important;
+        height: 30mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        overflow: hidden !important;
+      }
+      body * {
+        visibility: hidden !important;
+      }
+      #print-label-area, #print-label-area * {
+        visibility: visible !important;
+      }
+      #print-label-area {
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 70mm !important;
+        height: 30mm !important;
+        min-width: 70mm !important;
+        max-width: 70mm !important;
+        min-height: 30mm !important;
+        max-height: 30mm !important;
+        margin: 0 !important;
+        padding: 1.8mm 2.5mm !important;
+        box-sizing: border-box !important;
+        border: 1px solid #000000 !important;
+        border-radius: 0 !important;
+        background: #ffffff !important;
+        overflow: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+
+<body class="bg-slate-100 min-h-screen text-slate-800 font-sans pb-24 md:pb-16 select-none">
+
+  <!-- ================= BANNER PWA / OFFLINE ================= -->
+  <div id="pwa-install-banner" class="hidden bg-gradient-to-r from-brand-700 to-indigo-800 text-white px-4 py-2.5 text-xs flex items-center justify-between shadow-md sticky top-0 z-50">
+    <div class="flex items-center gap-2">
+      <div class="p-1.5 bg-white/20 rounded-lg">
+        <i data-lucide="smartphone" class="w-4 h-4"></i>
+      </div>
+      <div>
+        <p class="font-bold">Instalar App no seu dispositivo</p>
+        <p class="text-[11px] text-brand-200">Acesse offline e use o leitor direto da tela inicial</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="installPWA()" class="bg-white text-brand-800 hover:bg-brand-50 px-3 py-1.5 rounded-lg font-bold shadow-sm transition">
+        Instalar
+      </button>
+      <button onclick="dismissInstallBanner()" class="text-white/70 hover:text-white p-1">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Banner de Sincronização Offline Pendente -->
+  <div id="offline-sync-banner" class="hidden bg-amber-500 text-slate-900 px-4 py-2 text-xs font-semibold flex items-center justify-between shadow-md">
+    <div class="flex items-center gap-2">
+      <i data-lucide="cloud-off" class="w-4 h-4"></i>
+      <span>Você possui <strong id="offline-pending-count">0</strong> registro(s) salvos offline.</span>
+    </div>
+    <button onclick="syncOfflineQueue()" class="bg-slate-900 text-white hover:bg-black px-3 py-1 rounded-md text-[11px] transition shadow">
+      Sincronizar Agora
+    </button>
+  </div>
+
+  <!-- ================= TOPBAR / HEADER ================= -->
+  <header class="bg-brand-700 text-white shadow-lg sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row justify-between items-center gap-3">
+      
+      <!-- Logo e Título -->
+      <div class="flex items-center justify-between w-full md:w-auto">
+        <div class="flex items-center gap-3">
+          <div class="p-2 bg-brand-800/90 rounded-xl shadow-inner flex items-center justify-center">
+            <i data-lucide="scan-barcode" class="w-6 h-6 text-brand-200"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-base sm:text-lg font-bold tracking-tight">Controle de Equipamentos TI</h1>
+              <span class="bg-emerald-500 text-white text-[10px] font-black uppercase px-1.5 py-0.2 rounded-full">PWA</span>
+            </div>
+            <p class="text-[11px] text-brand-200">Leitor QR Code & Código de Barras integrado</p>
+          </div>
+        </div>
+
+        <!-- Botão rápido de leitor no mobile -->
+        <button onclick="openGlobalScanner()" class="md:hidden bg-brand-500 hover:bg-brand-600 text-white p-2 rounded-xl shadow flex items-center gap-1.5 text-xs font-bold">
+          <i data-lucide="qr-code" class="w-4 h-4"></i>
+          <span>Ler</span>
+        </button>
+      </div>
+
+      <!-- Barra de Ações do Header -->
+      <div class="flex flex-wrap items-center gap-2 text-xs">
+        
+        <!-- Status da Planilha -->
+        <button onclick="openConfigModal()" id="btn-status-badge" class="px-2.5 py-1.5 rounded-xl flex items-center gap-2 transition bg-amber-500/20 text-amber-100 border border-amber-400/30 hover:bg-amber-500/30 font-medium">
+          <span id="status-indicator-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          <span id="status-indicator-text">Modo Local</span>
+          <i data-lucide="settings" class="w-3.5 h-3.5 opacity-70"></i>
+        </button>
+
+        <!-- Sincronizar -->
+        <button onclick="syncWithSheets(true)" id="btn-sync" class="bg-brand-800 hover:bg-brand-900 text-white px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 transition border border-brand-600 shadow-sm" title="Sincronizar com Google Sheets">
+          <i data-lucide="refresh-cw" id="icon-sync" class="w-3.5 h-3.5"></i>
+          <span class="hidden sm:inline">Sincronizar</span>
+        </button>
+
+        <!-- Catálogo / Inventário -->
+        <button onclick="openInventoryModal()" class="bg-indigo-600 hover:bg-indigo-800 text-white px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 transition shadow-sm border border-indigo-400/30 font-medium">
+          <i data-lucide="boxes" class="w-3.5 h-3.5"></i>
+          <span>Inventário</span>
+        </button>
+
+        <!-- Gerador de Etiquetas -->
+        <button onclick="openLabelGeneratorModal()" class="bg-purple-600 hover:bg-purple-700 text-white px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 transition shadow-sm border border-purple-400/30 font-medium" title="Gerar e Imprimir Etiquetas de Patrimônio">
+          <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+          <span class="hidden sm:inline">Etiquetas</span>
+        </button>
+
+        <!-- Som On/Off -->
+        <button onclick="toggleAudio()" id="btn-audio-toggle" class="p-1.5 rounded-xl bg-brand-800 hover:bg-brand-900 text-brand-200 transition" title="Alternar som">
+          <i data-lucide="volume-2" id="icon-audio" class="w-4 h-4"></i>
+        </button>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= CONTEÚDO PRINCIPAL ================= -->
+  <main class="max-w-7xl mx-auto px-4 mt-5 grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- COLUNA ESQUERDA: Registro de Movimentação e Câmera QR/Barcode -->
+    <section class="lg:col-span-1 space-y-5">
+
+      <!-- CARD DO SCANNER (QR CODE + CÓDIGO DE BARRAS) -->
+      <div id="qr-scanner-card" class="bg-white p-4 rounded-2xl shadow-md border-2 border-brand-500 hidden transition-all">
+        
+        <!-- Header do Scanner -->
+        <div class="flex justify-between items-center mb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+            <h2 class="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+              <i data-lucide="scan" class="w-4 h-4 text-brand-600"></i> Leitor Ativo
+            </h2>
+          </div>
+          <button onclick="stopScanner()" class="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <!-- Modos de Detecção -->
+        <div class="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl mb-3 text-[11px] font-semibold text-slate-600 text-center">
+          <button type="button" onclick="setScanMode('auto')" id="mode-auto" class="py-1.5 rounded-lg bg-white text-brand-700 shadow-sm transition">
+            Auto (Todos)
+          </button>
+          <button type="button" onclick="setScanMode('barcode')" id="mode-barcode" class="py-1.5 rounded-lg hover:text-slate-900 transition">
+            Cód. Barras
+          </button>
+          <button type="button" onclick="setScanMode('qrcode')" id="mode-qrcode" class="py-1.5 rounded-lg hover:text-slate-900 transition">
+            QR Code
+          </button>
+        </div>
+
+        <!-- Viewfinder da Câmera -->
+        <div class="relative w-full rounded-xl overflow-hidden bg-slate-950 aspect-[4/3] flex items-center justify-center border border-slate-300 shadow-inner">
+          <div id="reader" class="w-full h-full"></div>
+          <div id="scanner-laser" class="scan-laser pointer-events-none"></div>
+
+          <!-- Mira Visual Central -->
+          <div id="scan-frame-guide" class="absolute inset-x-8 inset-y-12 border-2 border-dashed border-white/60 rounded-xl pointer-events-none transition-all flex items-center justify-center">
+            <span class="text-[10px] text-white/80 bg-black/50 px-2 py-0.5 rounded backdrop-blur-sm">
+              Alinhe o código na moldura
+            </span>
+          </div>
+        </div>
+
+        <!-- Controles da Câmera: Lanterna, Câmera e Cancelar -->
+        <div class="mt-3 flex items-center justify-between text-xs gap-2">
+          
+          <!-- Seletor de Câmera -->
+          <div class="flex items-center gap-1.5 flex-1 min-w-0">
+            <i data-lucide="camera" class="w-4 h-4 text-slate-500 shrink-0"></i>
+            <select id="camera-select" onchange="switchCamera(this.value)" class="bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-slate-700 text-xs w-full truncate">
+              <option value="">Detectando câmeras...</option>
+            </select>
+          </div>
+
+          <!-- Botão Lanterna (Torch) -->
+          <button type="button" onclick="toggleTorch()" id="btn-torch" class="p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition flex items-center gap-1 text-[11px] font-semibold" title="Ativar Lanterna">
+            <i data-lucide="flashlight" id="icon-torch" class="w-4 h-4"></i>
+          </button>
+
+          <!-- Botão Fechar -->
+          <button type="button" onclick="stopScanner()" class="px-3 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 rounded-lg font-semibold text-xs transition">
+            Fechar
+          </button>
+        </div>
+      </div>
+
+      <!-- FORMULÁRIO DE REGISTRO DE MOVIMENTAÇÃO -->
+      <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200">
+        
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2">
+            <i data-lucide="arrow-left-right" class="w-5 h-5 text-brand-600"></i>
+            Nova Movimentação
+          </h2>
+          <span id="sync-badge-form" class="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+            Pronto
+          </span>
+        </div>
+
+        <form id="movement-form" onsubmit="handleFormSubmit(event)" class="space-y-4">
+          
+          <!-- Seletor Retirada / Devolução -->
+          <div class="grid grid-cols-2 rounded-xl bg-slate-100 p-1 border border-slate-200 text-xs sm:text-sm font-semibold">
+            <button type="button" id="btn-type-withdrawal" onclick="setMovementType('retirada')" class="py-2 rounded-lg transition shadow-sm bg-white text-brand-700">
+              Retirada
+            </button>
+            <button type="button" id="btn-type-return" onclick="setMovementType('devolucao')" class="py-2 rounded-lg transition text-slate-500 hover:text-slate-800">
+              Devolução
+            </button>
+          </div>
+
+          <!-- Código / Patrimônio do Equipamento -->
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="block text-xs font-semibold text-slate-600 uppercase">Patrimônio / Código</label>
+              <span id="catalog-match-badge" class="hidden text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded font-medium">
+                Catálogo encontrado
+              </span>
+            </div>
+            <div class="flex gap-2">
+              <input type="text" id="equip-code" required placeholder="Ex: EQ-1001 ou leia a barra" 
+                oninput="handleCodeInput(this.value)"
+                class="flex-1 border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 uppercase font-mono font-medium">
+              <button type="button" onclick="startScanner('equip-code')" class="bg-brand-600 hover:bg-brand-700 active:scale-95 text-white px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 text-xs font-bold shadow-sm" title="Escanear com câmera">
+                <i data-lucide="scan" class="w-4 h-4"></i>
+                <span>Escanear</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Descrição do Equipamento -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Descrição do Equipamento</label>
+            <input type="text" id="equip-desc" required placeholder="Ex: Notebook Dell Latitude 3420 i5" 
+              class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+          </div>
+
+          <!-- Solicitante / Colaborador -->
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="block text-xs font-semibold text-slate-600 uppercase">Solicitante / Colaborador</label>
+              <span id="colab-match-badge" class="hidden text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded font-medium">
+                Colaborador localizado
+              </span>
+            </div>
+            <div class="flex gap-2">
+              <input type="text" id="requester-id" required placeholder="Ex: Matrícula ou Nome do Colaborador" 
+                oninput="handleRequesterInput(this.value)"
+                class="flex-1 border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <button type="button" onclick="startScanner('requester-id')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl transition border border-slate-300 flex items-center gap-1 text-xs font-semibold" title="Escanear crachá">
+                <i data-lucide="qr-code" class="w-4 h-4"></i>
+                <span class="hidden sm:inline">Crachá</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Observações -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Observações (Opcional)</label>
+            <textarea id="movement-obs" rows="2" placeholder="Ex: Fonte original, mouse sem fio e mochila inclusos..." 
+              class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+          </div>
+
+          <!-- Botão Submeter -->
+          <button type="submit" id="btn-submit-movement" class="w-full bg-brand-600 hover:bg-brand-700 active:scale-[0.99] text-white font-bold py-3 rounded-xl transition shadow-md flex items-center justify-center gap-2 text-sm">
+            <i data-lucide="check-circle" class="w-4 h-4"></i>
+            <span id="btn-submit-text">Registrar Retirada</span>
+          </button>
+        </form>
+
+      </div>
+    </section>
+
+    <!-- COLUNA DIREITA: Indicadores e Tabela de Movimentações -->
+    <section class="lg:col-span-2 space-y-5">
+
+      <!-- Cards de Métricas -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
+        
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center space-x-3.5">
+          <div class="p-3 bg-brand-50 text-brand-600 rounded-xl shrink-0">
+            <i data-lucide="layers" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500 font-medium">Total Registros</p>
+            <p id="stat-total" class="text-2xl font-bold text-slate-800">0</p>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center space-x-3.5">
+          <div class="p-3 bg-amber-50 text-amber-600 rounded-xl shrink-0">
+            <i data-lucide="clock" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500 font-medium">Em Empréstimo</p>
+            <p id="stat-borrowed" class="text-2xl font-bold text-amber-600">0</p>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center space-x-3.5 col-span-2 sm:col-span-1">
+          <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl shrink-0">
+            <i data-lucide="check-check" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500 font-medium">Devolvidos</p>
+            <p id="stat-returned" class="text-2xl font-bold text-emerald-600">0</p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Tabela Principal com Filtros e Busca -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        
+        <!-- Header da Tabela com Tabs e Barra de Busca -->
+        <div class="p-3.5 sm:p-4 border-b border-slate-100 flex flex-col md:flex-row justify-between md:items-center gap-3 bg-slate-50/60">
+          
+          <!-- Filtro de Tabs -->
+          <div class="flex items-center bg-slate-200/80 p-1 rounded-xl text-xs font-semibold text-slate-600">
+            <button onclick="setFilter('all')" id="tab-all" class="px-3 py-1.5 rounded-lg bg-white text-slate-900 shadow-sm transition">
+              Todos (<span id="count-all">0</span>)
+            </button>
+            <button onclick="setFilter('Emprestado')" id="tab-borrowed" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">
+              Empréstimos (<span id="count-borrowed">0</span>)
+            </button>
+            <button onclick="setFilter('Devolvido')" id="tab-returned" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">
+              Devolvidos (<span id="count-returned">0</span>)
+            </button>
+          </div>
+
+          <!-- Busca Rápida -->
+          <div class="relative w-full md:w-72">
+            <input type="text" id="search-input" onkeyup="renderTable()" placeholder="Buscar código, pessoa, item..." 
+              class="pl-9 pr-3 py-1.5 text-xs sm:text-sm border border-slate-300 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white shadow-sm">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2 sm:top-2.5"></i>
+          </div>
+
+        </div>
+
+        <!-- Tabela -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs sm:text-sm text-slate-600">
+            <thead class="bg-slate-100 text-[11px] font-bold uppercase text-slate-500 border-b border-slate-200 tracking-wider">
+              <tr>
+                <th class="p-3 pl-4">Código</th>
+                <th class="p-3">Equipamento</th>
+                <th class="p-3">Solicitante</th>
+                <th class="p-3">Retirada</th>
+                <th class="p-3">Devolução</th>
+                <th class="p-3 text-center">Status</th>
+                <th class="p-3 pr-4 text-center">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="records-table-body" class="divide-y divide-slate-100">
+              <!-- Renderizado via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ================= BARRA DE NAVEGAÇÃO INFERIOR (MOBILE FIRST) ================= -->
+  <nav class="md:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-2 flex items-center justify-around z-40 shadow-lg">
+    <button onclick="window.scrollTo({top: 0, behavior: 'smooth'})" class="flex flex-col items-center gap-0.5 text-slate-600 hover:text-brand-700">
+      <i data-lucide="home" class="w-5 h-5"></i>
+      <span class="text-[10px] font-medium">Início</span>
+    </button>
+    <button onclick="startScanner('equip-code')" class="flex flex-col items-center justify-center -mt-6 bg-brand-600 text-white w-13 h-13 p-3 rounded-full shadow-lg border-4 border-slate-100 active:scale-95 transition">
+      <i data-lucide="scan" class="w-6 h-6"></i>
+    </button>
+    <button onclick="openInventoryModal()" class="flex flex-col items-center gap-0.5 text-slate-600 hover:text-brand-700">
+      <i data-lucide="boxes" class="w-5 h-5"></i>
+      <span class="text-[10px] font-medium">Itens</span>
+    </button>
+    <button onclick="openConfigModal()" class="flex flex-col items-center gap-0.5 text-slate-600 hover:text-brand-700">
+      <i data-lucide="settings" class="w-5 h-5"></i>
+      <span class="text-[10px] font-medium">Ajustes</span>
+    </button>
+  </nav>
+
+  <!-- ================= MODAL: GERADOR E IMPRESSOR DE ETIQUETAS ================= -->
+  <dialog id="label-generator-modal" class="rounded-2xl p-0 w-full max-w-2xl shadow-2xl border border-slate-200">
+    <div class="bg-white overflow-hidden rounded-2xl">
+      <div class="bg-purple-700 text-white px-5 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="printer" class="w-5 h-5 text-purple-200"></i>
+          <h3 class="font-bold text-base">Gerador de Etiquetas de Patrimônio</h3>
+        </div>
+        <button onclick="closeLabelGeneratorModal()" class="text-white/80 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-6 text-sm">
+        
+        <!-- Formulário de Personalização -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <div>
+            <label class="block text-[11px] font-bold uppercase text-slate-600 mb-1">Código / Patrimônio</label>
+            <input type="text" id="label-code" value="EQ-1001" oninput="updateLabelPreview()" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold uppercase">
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-[11px] font-bold uppercase text-slate-600 mb-1">Descrição / Modelo</label>
+            <input type="text" id="label-desc" value="Notebook Dell Latitude 3420 i5" oninput="updateLabelPreview()" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold uppercase text-slate-600 mb-1">Empresa / Departamento</label>
+            <input type="text" id="label-company" value="DEPARTAMENTO DE T.I." oninput="updateLabelPreview()" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs uppercase">
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold uppercase text-slate-600 mb-1">Formato de Código</label>
+            <select id="label-format" onchange="updateLabelPreview()" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
+              <option value="both">Ambos (QR Code + Cód. Barras)</option>
+              <option value="barcode">Apenas Código de Barras (1D)</option>
+              <option value="qrcode">Apenas QR Code (2D)</option>
+            </select>
+          </div>
+          <div class="flex items-end">
+            <button onclick="printCurrentLabel()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-1.5 rounded-lg text-xs shadow transition flex items-center justify-center gap-1.5">
+              <i data-lucide="printer" class="w-4 h-4"></i>
+              Imprimir Etiqueta
+            </button>
+          </div>
+        </div>
+
+        <!-- Preview Visual da Etiqueta (Área Imprimível 7x3 cm / 70x30 mm) -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-xs font-bold uppercase text-slate-700 flex items-center gap-1.5">
+              <i data-lucide="tag" class="w-3.5 h-3.5 text-purple-600"></i>
+              Prévia da Etiqueta (Formato 7x3 cm / 70x30 mm)
+            </p>
+            <span class="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold">
+              70mm × 30mm
+            </span>
+          </div>
+
+          <div class="flex flex-col items-center justify-center p-6 bg-slate-200/90 rounded-2xl border border-slate-300">
+            <!-- Etiqueta com dimensões físicas exatas 70mm x 30mm -->
+            <div id="print-label-area" class="bg-white border-2 border-slate-900 rounded shadow-md text-slate-900 font-sans flex flex-col justify-between overflow-hidden" style="width: 70mm; height: 30mm; min-width: 70mm; min-height: 30mm; max-width: 70mm; max-height: 30mm; padding: 1.8mm 2.5mm; box-sizing: border-box;">
+              
+              <!-- Cabeçalho (Empresa e Descrição) -->
+              <div class="text-center border-b border-slate-400 pb-0.5 leading-tight">
+                <p id="preview-company" class="text-[7.5pt] font-black uppercase tracking-wider text-slate-900 truncate">DEPARTAMENTO DE T.I.</p>
+                <p id="preview-desc" class="text-[7pt] font-bold text-slate-700 truncate">Notebook Dell Latitude 3420 i5</p>
+              </div>
+
+              <!-- Miolo: QR Code + Código de Barras -->
+              <div class="flex items-center justify-between gap-2 my-auto" style="height: 15mm;">
+                <!-- QR Code Container -->
+                <div id="preview-qrcode" class="shrink-0 flex items-center justify-center" style="width: 14mm; height: 14mm;"></div>
+                
+                <!-- Código de Barras Container -->
+                <div class="flex flex-col items-center justify-center flex-1 min-w-0">
+                  <svg id="preview-barcode" class="w-full" style="max-height: 10.5mm;"></svg>
+                  <p id="preview-code-text" class="font-mono text-[7pt] font-black tracking-widest leading-none mt-0.5">EQ-1001</p>
+                </div>
+              </div>
+
+              <!-- Rodapé da Etiqueta -->
+              <div class="text-center border-t border-slate-400 pt-0.5 leading-none">
+                <p class="text-[5.5pt] text-slate-600 font-bold uppercase tracking-tight">PATRIMÔNIO CORPORATIVO • NÃO REMOVER</p>
+              </div>
+            </div>
+
+            <p class="text-[11px] text-slate-600 font-medium mt-3 flex items-center gap-1">
+              <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-600"></i>
+              Formatada perfeitamente para rolos de 7x3 cm (Zebra, Elgin, Argox, Brother).
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ================= MODAL: HISTÓRICO DETALHADO DO EQUIPAMENTO ================= -->
+  <dialog id="equipment-history-modal" class="rounded-2xl p-0 w-full max-w-2xl shadow-2xl border border-slate-200">
+    <div class="bg-white overflow-hidden rounded-2xl">
+      <div class="bg-slate-800 text-white px-5 py-4 flex items-center justify-between">
+        <div>
+          <h3 class="font-bold text-sm sm:text-base flex items-center gap-2">
+            <i data-lucide="history" class="w-5 h-5 text-indigo-400"></i>
+            Linha do Tempo do Equipamento
+          </h3>
+          <p id="history-modal-subtitle" class="text-xs text-slate-400 mt-0.5"></p>
+        </div>
+        <button onclick="closeHistoryModal()" class="text-white/80 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-5 max-h-96 overflow-y-auto">
+        <div id="history-timeline-container" class="space-y-4">
+          <!-- Preenchido via JS -->
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ================= MODAL: CONFIGURAÇÃO GOOGLE SHEETS ================= -->
+  <dialog id="config-modal" class="rounded-2xl p-0 w-full max-w-xl shadow-2xl border border-slate-200">
+    <div class="bg-white overflow-hidden rounded-2xl">
+      <div class="bg-brand-700 text-white px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <i data-lucide="cloud" class="w-5 h-5 text-brand-200"></i>
+          <h3 class="font-bold text-base">Conexão com o Google Planilhas</h3>
+        </div>
+        <button onclick="closeConfigModal()" class="text-white/80 hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4 text-slate-700 text-sm">
+        <div>
+          <label class="block font-semibold text-xs uppercase text-slate-500 mb-1.5">
+            URL do Web App (Google Apps Script)
+          </label>
+          <input type="url" id="sheets-url-input" placeholder="https://script.google.com/macros/s/.../exec" 
+            class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono text-xs">
+          <p class="text-xs text-slate-400 mt-1">Cole o link gerado após implantar o script na sua planilha.</p>
+        </div>
+
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs space-y-1.5 text-slate-600">
+          <p class="font-bold text-slate-800 flex items-center gap-1.5">
+            <i data-lucide="info" class="w-4 h-4 text-brand-600"></i> Passo a passo rápido:
+          </p>
+          <ol class="list-decimal list-inside space-y-1">
+            <li>Abra a planilha no Google Sheets e vá em <strong>Extensões > Apps Script</strong>.</li>
+            <li>Cole o código contido em <code>google-apps-script.js</code> e salve.</li>
+            <li>Clique em <strong>Implantar > Nova Implantação > App da Web (Quem pode acessar: Qualquer pessoa)</strong>.</li>
+          </ol>
+        </div>
+
+        <!-- Download do Modelo Pronto -->
+        <div class="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div>
+            <p class="font-bold text-emerald-900 text-xs flex items-center gap-1.5">
+              <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600"></i>
+              Planilha Pronta para Download
+            </p>
+            <p class="text-[11px] text-emerald-700">Baixe o arquivo com as 3 abas e envie para seu Google Drive.</p>
+          </div>
+          <button onclick="downloadTemplateSpreadsheet()" type="button" class="w-full sm:w-auto px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-sm transition flex items-center justify-center gap-1.5 shrink-0">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            Baixar (.xlsx)
+          </button>
+        </div>
+
+        <div class="flex justify-between items-center gap-3 pt-2">
+          <button onclick="testSheetsConnection()" id="btn-test-connection" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl transition flex items-center gap-1.5 text-xs">
+            <i data-lucide="activity" class="w-4 h-4"></i>
+            Testar Conexão
+          </button>
+          
+          <div class="flex gap-2">
+            <button onclick="closeConfigModal()" class="px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl transition text-xs font-semibold">
+              Cancelar
+            </button>
+            <button onclick="saveSheetsConfig()" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl transition text-xs font-semibold shadow">
+              Salvar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ================= MODAL: CONFIRMAR DEVOLUÇÃO COM OBSERVAÇÃO ================= -->
+  <dialog id="return-modal" class="rounded-2xl p-0 w-full max-w-md shadow-2xl border border-slate-200">
+    <div class="bg-white overflow-hidden rounded-2xl">
+      <div class="bg-emerald-600 text-white px-5 py-4 flex items-center justify-between">
+        <h3 class="font-bold text-sm flex items-center gap-2">
+          <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+          Confirmar Devolução
+        </h3>
+        <button onclick="closeReturnModal()" class="text-white/80 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="p-5 space-y-4 text-sm">
+        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs">
+          <p class="text-slate-500">Equipamento:</p>
+          <p id="return-modal-equip" class="font-bold text-slate-800 text-sm"></p>
+          <p id="return-modal-requester" class="text-slate-600 mt-1"></p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Observações da Devolução (Opcional)</label>
+          <textarea id="return-modal-obs" rows="2" placeholder="Ex: Devolvido com fonte e mouse. Sem avarias." 
+            class="w-full border border-slate-300 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button onclick="closeReturnModal()" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-xl text-xs font-medium hover:bg-slate-50">
+            Cancelar
+          </button>
+          <button onclick="confirmReturnAction()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow">
+            Confirmar Devolução
+          </button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ================= MODAL: INVENTÁRIO / CADASTRO DE EQUIPAMENTOS ================= -->
+  <dialog id="inventory-modal" class="rounded-2xl p-0 w-full max-w-3xl shadow-2xl border border-slate-200">
+    <div class="bg-white overflow-hidden rounded-2xl">
+      <div class="bg-indigo-700 text-white px-5 sm:px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="boxes" class="w-5 h-5 text-indigo-200"></i>
+          <h3 class="font-bold text-base">Catálogo de Equipamentos Cadastrados</h3>
+        </div>
+        <button onclick="closeInventoryModal()" class="text-white/80 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-5 sm:p-6 space-y-5">
+        <!-- Formulário de Adição Rápida -->
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <h4 class="text-xs font-bold uppercase text-slate-700 mb-3 flex items-center gap-1.5">
+            <i data-lucide="plus-circle" class="w-4 h-4 text-indigo-600"></i> Cadastrar Novo Equipamento
+          </h4>
+          <form onsubmit="handleNewInventorySubmit(event)" class="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+            <input type="text" id="new-inv-code" required placeholder="Código (Ex: EQ-200)" class="border border-slate-300 rounded-lg px-3 py-1.5 text-xs uppercase font-mono">
+            <input type="text" id="new-inv-desc" required placeholder="Descrição (Ex: Notebook Dell)" class="sm:col-span-2 border border-slate-300 rounded-lg px-3 py-1.5 text-xs">
+            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg text-xs py-1.5 shadow transition">
+              Salvar Item
+            </button>
+          </form>
+        </div>
+
+        <!-- Tabela do Inventário -->
+        <div class="max-h-80 overflow-y-auto border border-slate-200 rounded-xl">
+          <table class="w-full text-left text-xs text-slate-600">
+            <thead class="bg-slate-100 text-[11px] font-bold uppercase text-slate-500 border-b border-slate-200 sticky top-0">
+              <tr>
+                <th class="p-3">Código</th>
+                <th class="p-3">Descrição</th>
+                <th class="p-3">Categoria</th>
+                <th class="p-3 text-center">Status</th>
+                <th class="p-3 text-center">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="inventory-table-body" class="divide-y divide-slate-100">
+              <!-- Preenchido via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ================= CONTAINER DE TOASTS ================= -->
+  <div id="toast-container" class="fixed bottom-20 md:bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 md:px-0"></div>
+
+  <!-- ================= JAVASCRIPT PRINCIPAL ================= -->
+  <script>
+    // --- REGISTRO DO SERVICE WORKER (PWA) ---
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('[PWA] Service Worker registrado com sucesso! Escopo:', reg.scope))
+          .catch(err => console.warn('[PWA] Falha ao registrar Service Worker:', err));
+      });
+    }
+
+    // --- PROMPT DE INSTALAÇÃO DO PWA ---
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const dismissed = localStorage.getItem('ti_pwa_dismissed');
+      if (!dismissed) {
+        document.getElementById('pwa-install-banner').classList.remove('hidden');
+      }
+    });
+
+    function installPWA() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+          if (choiceResult.outcome === 'accepted') {
+            showToast('Aplicativo instalado com sucesso!', 'success');
+          }
+          deferredPrompt = null;
+          document.getElementById('pwa-install-banner').classList.add('hidden');
+        });
+      }
+    }
+
+    function dismissInstallBanner() {
+      document.getElementById('pwa-install-banner').classList.add('hidden');
+      localStorage.setItem('ti_pwa_dismissed', 'true');
+    }
+
+    // --- ESTADO DA APLICAÇÃO ---
+    function readStoredArray(key, fallback = []) {
+      try {
+        const value = JSON.parse(localStorage.getItem(key) || 'null');
+        return Array.isArray(value) ? value : fallback;
+      } catch (error) {
+        console.warn(`Dados locais inválidos em ${key}; usando valores padrão.`, error);
+        return fallback;
+      }
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+    }
+
+    function jsStringAttribute(value) {
+      return escapeHtml(JSON.stringify(String(value ?? '')).replace(/</g, '\\u003c'));
+    }
+
+    let records = readStoredArray('ti_equipment_records');
+    let offlineQueue = readStoredArray('ti_offline_queue');
+    let inventory = readStoredArray('ti_inventory_catalog', [
+      { code: "EQ-1001", desc: "Notebook Dell Latitude 3420 i5 16GB", category: "Notebook", status: "Disponível" },
+      { code: "EQ-1002", desc: "Notebook Lenovo ThinkPad E14 Ryzen 7", category: "Notebook", status: "Disponível" },
+      { code: "EQ-1003", desc: "Monitor LG 24 polegadas IPS 75Hz", category: "Monitor", status: "Disponível" },
+      { code: "EQ-1004", desc: "Kit Teclado + Mouse sem fio Dell KM3322W", category: "Periférico", status: "Disponível" },
+      { code: "EQ-1005", desc: "Adaptador USB-C para HDMI / VGA Dell", category: "Acessório", status: "Disponível" },
+      { code: "EQ-1006", desc: "Headset Jabra Evolve 20 USB", category: "Áudio", status: "Disponível" }
+    ]);
+    let employees = readStoredArray('ti_employees_catalog', [
+      { id: "101", name: "João Pedro Silva", department: "Desenvolvimento" },
+      { id: "102", name: "Mariana Costa", department: "RH / Gente & Gestão" },
+      { id: "103", name: "Lucas Fernandes", department: "Financeiro" },
+      { id: "104", name: "Camila Rocha", department: "Operações" }
+    ]);
+
+    let currentMovementType = 'retirada';
+    let currentFilter = 'all';
+    let currentScanMode = 'auto'; // 'auto', 'barcode', 'qrcode'
+    let googleScriptUrl = localStorage.getItem('ti_google_script_url') || '';
+    let isSoundEnabled = localStorage.getItem('ti_sound_enabled') !== 'false';
+    
+    let html5QrcodeScanner = null;
+    let targetInputForQR = null;
+    let pendingReturnId = null;
+    let isTorchOn = false;
+
+    // --- INICIALIZAÇÃO ---
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      updateAudioIcon();
+      renderTable();
+      updateStats();
+      renderInventoryTable();
+      updateOfflineBanner();
+
+      // Monitor de status de rede
+      window.addEventListener('online', () => {
+        showToast('Conexão restabelecida! Sincronizando...', 'info');
+        syncOfflineQueue();
+      });
+
+      window.addEventListener('offline', () => {
+        showToast('Você está offline. Os registros serão guardados no celular.', 'warning');
+      });
+
+      // Ações via URL (PWA Shortcuts)
+      const urlParams = new URLSearchParams(window.location.search);
+      const actionParam = urlParams.get('action');
+      if (actionParam === 'scan') {
+        openGlobalScanner();
+      } else if (actionParam === 'devolucao') {
+        setMovementType('devolucao');
+      }
+
+      // Sincroniza se URL estiver presente
+      if (googleScriptUrl) {
+        updateConnectionStatus('connected');
+        syncWithSheets(false);
+      } else {
+        updateConnectionStatus('local');
+      }
+    });
+
+    // --- SÍNTESE DE ÁUDIO E HAPTIC FEEDBACK (VIBRAÇÃO) ---
+    function triggerFeedback(type = 'success') {
+      // Vibração no celular (Haptic)
+      if (navigator.vibrate) {
+        if (type === 'success') {
+          navigator.vibrate([70, 40, 70]);
+        } else {
+          navigator.vibrate([150]);
+        }
+      }
+
+      // Bipe Sonoro
+      if (!isSoundEnabled) return;
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'success') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+          osc.frequency.setValueAtTime(1318.5, audioCtx.currentTime + 0.07); // E6
+          gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.22);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.22);
+        } else {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+          gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.3);
+        }
+      } catch (e) {
+        console.warn('Erro ao tocar áudio:', e);
+      }
+    }
+
+    function toggleAudio() {
+      isSoundEnabled = !isSoundEnabled;
+      localStorage.setItem('ti_sound_enabled', isSoundEnabled);
+      updateAudioIcon();
+      showToast(isSoundEnabled ? 'Som ativado' : 'Som desativado', 'info');
+    }
+
+    function updateAudioIcon() {
+      const icon = document.getElementById('icon-audio');
+      if (icon) {
+        icon.setAttribute('data-lucide', isSoundEnabled ? 'volume-2' : 'volume-x');
+        lucide.createIcons();
+      }
+    }
+
+    // --- NOTIFICAÇÕES MODERNAS (TOASTS) ---
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      const colors = {
+        success: 'bg-emerald-600 text-white border-emerald-700',
+        error: 'bg-rose-600 text-white border-rose-700',
+        warning: 'bg-amber-500 text-white border-amber-600',
+        info: 'bg-slate-800 text-white border-slate-900'
+      };
+
+      const icons = {
+        success: 'check-circle-2',
+        error: 'alert-triangle',
+        warning: 'alert-circle',
+        info: 'info'
+      };
+
+      toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-xl border text-xs sm:text-sm font-semibold transition-all duration-300 transform translate-y-2 opacity-0 ${colors[type] || colors.info}`;
+      toast.innerHTML = `
+        <i data-lucide="${icons[type] || 'info'}" class="w-4 h-4 shrink-0"></i>
+        <span class="flex-1">${escapeHtml(message)}</span>
+      `;
+
+      container.appendChild(toast);
+      lucide.createIcons();
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // --- SISTEMA DE LEITURA DUPLO: QR CODE & CÓDIGO DE BARRAS ---
+    function openGlobalScanner() {
+      startScanner('equip-code');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function setScanMode(mode) {
+      currentScanMode = mode;
+      const bAuto = document.getElementById('mode-auto');
+      const bBar = document.getElementById('mode-barcode');
+      const bQr = document.getElementById('mode-qrcode');
+      const guide = document.getElementById('scan-frame-guide');
+
+      const act = "py-1.5 rounded-lg bg-white text-brand-700 shadow-sm transition";
+      const inact = "py-1.5 rounded-lg hover:text-slate-900 transition";
+
+      bAuto.className = mode === 'auto' ? act : inact;
+      bBar.className = mode === 'barcode' ? act : inact;
+      bQr.className = mode === 'qrcode' ? act : inact;
+
+      if (mode === 'barcode') {
+        guide.className = "absolute inset-x-4 inset-y-16 border-2 border-dashed border-emerald-400 rounded-lg pointer-events-none transition-all flex items-center justify-center";
+      } else if (mode === 'qrcode') {
+        guide.className = "absolute inset-10 border-2 border-dashed border-brand-400 rounded-xl pointer-events-none transition-all flex items-center justify-center";
+      } else {
+        guide.className = "absolute inset-x-8 inset-y-12 border-2 border-dashed border-white/60 rounded-xl pointer-events-none transition-all flex items-center justify-center";
+      }
+
+      // Reinicia câmera com nova geometria se estiver aberta
+      if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
+        const select = document.getElementById('camera-select');
+        const cameraId = select.value || { facingMode: "environment" };
+        html5QrcodeScanner.stop().then(() => launchCamera(cameraId));
+      }
+    }
+
+    function startScanner(inputId) {
+      targetInputForQR = inputId;
+      const scannerCard = document.getElementById('qr-scanner-card');
+      scannerCard.classList.remove('hidden');
+
+      // Configuração completa de formatos de código (1D e 2D)
+      if (!html5QrcodeScanner) {
+        html5QrcodeScanner = new Html5Qrcode("reader", {
+          formatsToSupport: [
+            Html5QrcodeSupportedFormats.QR_CODE,
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E,
+            Html5QrcodeSupportedFormats.ITF,
+            Html5QrcodeSupportedFormats.DATA_MATRIX
+          ],
+          verbose: false
+        });
+      }
+
+      Html5Qrcode.getCameras().then(devices => {
+        const select = document.getElementById('camera-select');
+        select.innerHTML = '';
+        if (devices && devices.length) {
+          devices.forEach((dev, idx) => {
+            const opt = document.createElement('option');
+            opt.value = dev.id;
+            opt.innerText = dev.label || `Câmera ${idx + 1}`;
+            select.appendChild(opt);
+          });
+
+          // Seleciona preferencialmente a câmera traseira
+          const backCam = devices.find(d => 
+            d.label.toLowerCase().includes('back') || 
+            d.label.toLowerCase().includes('traseira') || 
+            d.label.toLowerCase().includes('environment')
+          );
+          const selectedId = backCam ? backCam.id : devices[0].id;
+          select.value = selectedId;
+          launchCamera(selectedId);
+        } else {
+          launchCamera({ facingMode: "environment" });
+        }
+      }).catch(() => {
+        launchCamera({ facingMode: "environment" });
+      });
+    }
+
+    function launchCamera(cameraConfig) {
+      const config = {
+        fps: 15,
+        qrbox: (viewfinderWidth, viewfinderHeight) => {
+          const widthFactor = currentScanMode === 'qrcode' ? 0.75 : 0.88;
+          const heightFactor = currentScanMode === 'barcode' ? 0.38 : (currentScanMode === 'qrcode' ? 0.75 : 0.55);
+          return {
+            width: Math.floor(viewfinderWidth * widthFactor),
+            height: Math.floor(viewfinderHeight * heightFactor)
+          };
+        },
+        aspectRatio: 1.33
+      };
+
+      html5QrcodeScanner.start(cameraConfig, config, onScanSuccess)
+        .catch(err => {
+          showToast('Não foi possível acessar a câmera: ' + err, 'error');
+          stopScanner();
+        });
+    }
+
+    function switchCamera(cameraId) {
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.stop().then(() => launchCamera(cameraId));
+      }
+    }
+
+    function toggleTorch() {
+      if (!html5QrcodeScanner || !html5QrcodeScanner.isScanning) return;
+      isTorchOn = !isTorchOn;
+      html5QrcodeScanner.applyVideoConstraints({
+        advanced: [{ torch: isTorchOn }]
+      }).then(() => {
+        document.getElementById('icon-torch').setAttribute('data-lucide', isTorchOn ? 'zap' : 'flashlight');
+        document.getElementById('btn-torch').classList.toggle('bg-amber-100', isTorchOn);
+        lucide.createIcons();
+      }).catch(err => {
+        showToast('Lanterna não disponível nesta câmera.', 'warning');
+      });
+    }
+
+    function onScanSuccess(decodedText, decodedResult) {
+      triggerFeedback('success');
+      const formatName = (decodedResult && decodedResult.result && decodedResult.result.format) 
+        ? decodedResult.result.format.formatName 
+        : 'Código';
+
+      if (targetInputForQR) {
+        const input = document.getElementById(targetInputForQR);
+        input.value = decodedText;
+        if (targetInputForQR === 'equip-code') {
+          handleCodeInput(decodedText);
+        } else if (targetInputForQR === 'requester-id') {
+          handleRequesterInput(decodedText);
+        }
+      }
+
+      showToast(`Lido com sucesso (${formatName}): ${decodedText}`, 'success');
+      stopScanner();
+    }
+
+    function stopScanner() {
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.stop().then(() => {
+          document.getElementById('qr-scanner-card').classList.add('hidden');
+        }).catch(() => {
+          document.getElementById('qr-scanner-card').classList.add('hidden');
+        });
+      } else {
+        document.getElementById('qr-scanner-card').classList.add('hidden');
+      }
+    }
+
+    // --- CONTROLE DE RETIRADA / DEVOLUÇÃO ---
+    function setMovementType(type) {
+      currentMovementType = type;
+      const btnWithdrawal = document.getElementById('btn-type-withdrawal');
+      const btnReturn = document.getElementById('btn-type-return');
+      const btnSubmit = document.getElementById('btn-submit-text');
+
+      if (type === 'retirada') {
+        btnWithdrawal.className = "py-2 rounded-lg transition shadow-sm bg-white text-brand-700";
+        btnReturn.className = "py-2 rounded-lg transition text-slate-500 hover:text-slate-800";
+        btnSubmit.innerText = "Registrar Retirada";
+      } else {
+        btnReturn.className = "py-2 rounded-lg transition shadow-sm bg-white text-brand-700";
+        btnWithdrawal.className = "py-2 rounded-lg transition text-slate-500 hover:text-slate-800";
+        btnSubmit.innerText = "Registrar Devolução Direta";
+      }
+    }
+
+    function handleCodeInput(code) {
+      const trimmed = code.trim().toLowerCase();
+      const badge = document.getElementById('catalog-match-badge');
+      const descInput = document.getElementById('equip-desc');
+
+      const foundItem = inventory.find(i => i.code.toLowerCase() === trimmed);
+      if (foundItem) {
+        descInput.value = foundItem.desc;
+        badge.classList.remove('hidden');
+        badge.innerText = `Cadastrado: ${foundItem.category || 'Item'}`;
+      } else {
+        badge.classList.add('hidden');
+      }
+
+      if (currentMovementType === 'retirada' && trimmed.length > 2) {
+        const activeLoan = records.find(r => r.code.toLowerCase() === trimmed && r.status === 'Emprestado');
+        if (activeLoan) {
+          showToast(`Atenção: ${activeLoan.code} já consta emprestado para ${activeLoan.requester}!`, 'warning');
+        }
+      }
+    }
+
+    function handleRequesterInput(val) {
+      const trimmed = val.trim().toLowerCase();
+      const badge = document.getElementById('colab-match-badge');
+      
+      const foundColab = employees.find(e => e.id.toLowerCase() === trimmed || e.name.toLowerCase().includes(trimmed));
+      if (foundColab && trimmed.length >= 2) {
+        document.getElementById('requester-id').value = `${foundColab.name} (${foundColab.department})`;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+
+    // --- FORM SUBMIT E FILA OFFLINE ---
+    async function handleFormSubmit(e) {
+      e.preventDefault();
+      const code = document.getElementById('equip-code').value.trim().toUpperCase();
+      const desc = document.getElementById('equip-desc').value.trim();
+      const requester = document.getElementById('requester-id').value.trim();
+      const obs = document.getElementById('movement-obs').value.trim();
+      const now = new Date().toLocaleString('pt-BR');
+
+      if (!code || !desc || !requester) {
+        showToast('Informe o código, equipamento e solicitante.', 'warning');
+        return;
+      }
+
+      if (currentMovementType === 'retirada') {
+        const activeLoan = records.find(r => String(r.code).toUpperCase() === code && r.status === 'Emprestado');
+        if (activeLoan) {
+          showToast(`${code} já está emprestado para ${activeLoan.requester}.`, 'warning');
+          return;
+        }
+        const newRecord = {
+          id: Date.now(),
+          code,
+          desc,
+          requester,
+          withdrawalDate: now,
+          returnDate: null,
+          obs,
+          status: 'Emprestado'
+        };
+
+        records.unshift(newRecord);
+        showToast(`Retirada de ${code} registrada!`, 'success');
+        triggerFeedback('success');
+        queueSync({ action: 'create', ...newRecord });
+
+      } else {
+        const existingIndex = records.findIndex(r => r.code.toUpperCase() === code && r.status === 'Emprestado');
+        if (existingIndex !== -1) {
+          records[existingIndex].returnDate = now;
+          records[existingIndex].status = 'Devolvido';
+          if (obs) {
+            records[existingIndex].obs = records[existingIndex].obs ? `${records[existingIndex].obs} | Dev: ${obs}` : `Dev: ${obs}`;
+          }
+          showToast(`Devolução de ${code} confirmada!`, 'success');
+          triggerFeedback('success');
+
+          queueSync({
+            action: 'return',
+            id: records[existingIndex].id,
+            code: code,
+            returnDate: now,
+            obs: obs
+          });
+        } else {
+          const newRecord = {
+            id: Date.now(),
+            code,
+            desc,
+            requester,
+            withdrawalDate: 'N/A',
+            returnDate: now,
+            obs: obs ? `Devolução Direta: ${obs}` : 'Devolução Direta',
+            status: 'Devolvido'
+          };
+          records.unshift(newRecord);
+          showToast(`Devolução direta de ${code} registrada!`, 'info');
+          triggerFeedback('success');
+          queueSync({ action: 'create', ...newRecord });
+        }
+      }
+
+      saveLocalData();
+      renderTable();
+      updateStats();
+
+      document.getElementById('movement-form').reset();
+      document.getElementById('catalog-match-badge').classList.add('hidden');
+      document.getElementById('colab-match-badge').classList.add('hidden');
+      setMovementType('retirada');
+    }
+
+    // --- FILA DE SINCRONIZAÇÃO OFFLINE ---
+    function queueSync(payload) {
+      if (!googleScriptUrl) return;
+
+      if (!navigator.onLine) {
+        offlineQueue.push(payload);
+        localStorage.setItem('ti_offline_queue', JSON.stringify(offlineQueue));
+        updateOfflineBanner();
+        return;
+      }
+
+      postToGoogleSheets(payload).catch(() => {
+        offlineQueue.push(payload);
+        localStorage.setItem('ti_offline_queue', JSON.stringify(offlineQueue));
+        updateOfflineBanner();
+      });
+    }
+
+    async function syncOfflineQueue() {
+      if (offlineQueue.length === 0 || !googleScriptUrl) return;
+
+      showToast(`Enviando ${offlineQueue.length} registro(s) offline para a planilha...`, 'info');
+      const itemsToSync = [...offlineQueue];
+      
+      for (const item of itemsToSync) {
+        try {
+          await postToGoogleSheets(item);
+          offlineQueue.shift();
+          localStorage.setItem('ti_offline_queue', JSON.stringify(offlineQueue));
+          updateOfflineBanner();
+        } catch (e) {
+          console.warn('Erro ao enviar item da fila:', e);
+          break;
+        }
+      }
+
+      if (offlineQueue.length === 0) {
+        showToast('Todos os registros offline foram sincronizados!', 'success');
+        syncWithSheets(false);
+      }
+    }
+
+    function updateOfflineBanner() {
+      const banner = document.getElementById('offline-sync-banner');
+      const countEl = document.getElementById('offline-pending-count');
+      if (offlineQueue.length > 0) {
+        countEl.innerText = offlineQueue.length;
+        banner.classList.remove('hidden');
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+
+    // --- TABELA E LINHA DO TEMPO DO EQUIPAMENTO ---
+    function openHistoryModal(code) {
+      const modal = document.getElementById('equipment-history-modal');
+      const subtitle = document.getElementById('history-modal-subtitle');
+      const container = document.getElementById('history-timeline-container');
+      
+      const item = inventory.find(i => i.code.toUpperCase() === code.toUpperCase());
+      subtitle.innerText = `${code} • ${item ? item.desc : 'Equipamento'}`;
+      container.innerHTML = '';
+
+      const equipRecords = records.filter(r => r.code.toUpperCase() === code.toUpperCase());
+
+      if (equipRecords.length === 0) {
+        container.innerHTML = `<p class="text-center py-6 text-slate-400 text-xs">Nenhum histórico de movimentação registrado para este item.</p>`;
+      } else {
+        equipRecords.forEach((r, idx) => {
+          const div = document.createElement('div');
+          div.className = "flex gap-3 text-xs";
+          div.innerHTML = `
+            <div class="flex flex-col items-center">
+              <span class="w-3 h-3 rounded-full ${r.status === 'Emprestado' ? 'bg-amber-500' : 'bg-emerald-500'}"></span>
+              ${idx < equipRecords.length - 1 ? '<span class="w-0.5 flex-1 bg-slate-200 my-1"></span>' : ''}
+            </div>
+            <div class="flex-1 bg-slate-50 p-3 rounded-xl border border-slate-200 mb-2">
+              <div class="flex justify-between items-center mb-1">
+                <span class="font-bold text-slate-800">${escapeHtml(r.requester)}</span>
+                <span class="font-semibold px-2 py-0.5 rounded text-[10px] ${r.status === 'Emprestado' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">
+                  ${escapeHtml(r.status)}
+                </span>
+              </div>
+              <p class="text-slate-500 text-[11px]">Retirada: ${escapeHtml(r.withdrawalDate)}</p>
+              ${r.returnDate ? `<p class="text-slate-500 text-[11px]">Devolução: ${escapeHtml(r.returnDate)}</p>` : ''}
+              ${r.obs ? `<p class="text-slate-600 text-[11px] mt-1 bg-white p-1.5 rounded border border-slate-200">${escapeHtml(r.obs)}</p>` : ''}
+            </div>
+          `;
+          container.appendChild(div);
+        });
+      }
+
+      modal.showModal();
+    }
+
+    function closeHistoryModal() {
+      document.getElementById('equipment-history-modal').close();
+    }
+
+    // --- GERADOR E IMPRESSÃO DE ETIQUETAS DE PATRIMÔNIO ---
+    function openLabelGeneratorModal(code = null, desc = null) {
+      if (code) {
+        document.getElementById('label-code').value = code;
+        document.getElementById('label-desc').value = desc || '';
+      }
+      updateLabelPreview();
+      document.getElementById('label-generator-modal').showModal();
+    }
+
+    function closeLabelGeneratorModal() {
+      document.getElementById('label-generator-modal').close();
+    }
+
+    function updateLabelPreview() {
+      const code = document.getElementById('label-code').value.trim().toUpperCase() || 'EQ-1001';
+      const desc = document.getElementById('label-desc').value.trim() || 'Equipamento TI';
+      const company = document.getElementById('label-company').value.trim() || 'CONTROLE DE T.I.';
+      const format = document.getElementById('label-format').value;
+
+      document.getElementById('preview-company').innerText = company;
+      document.getElementById('preview-desc').innerText = desc;
+      document.getElementById('preview-code-text').innerText = code;
+
+      const qrContainer = document.getElementById('preview-qrcode');
+      const barcodeEl = document.getElementById('preview-barcode');
+      qrContainer.innerHTML = '';
+
+      // Gera Código de Barras (CODE128 otimizado para 7x3 cm)
+      if (format === 'both' || format === 'barcode') {
+        barcodeEl.style.display = 'block';
+        try {
+          const barWidth = format === 'barcode' ? 1.45 : 1.15;
+          const barHeight = format === 'barcode' ? 32 : 24;
+          JsBarcode(barcodeEl, code, {
+            format: "CODE128",
+            width: barWidth,
+            height: barHeight,
+            displayValue: false,
+            margin: 0
+          });
+        } catch (e) {
+          console.warn('Erro ao gerar código de barras:', e);
+        }
+      } else {
+        barcodeEl.style.display = 'none';
+      }
+
+      // Gera QR Code (otimizado para 7x3 cm)
+      if (format === 'both' || format === 'qrcode') {
+        qrContainer.style.display = 'flex';
+        const qrSize = format === 'qrcode' ? 58 : 46;
+        new QRCode(qrContainer, {
+          text: code,
+          width: qrSize,
+          height: qrSize,
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      } else {
+        qrContainer.style.display = 'none';
+      }
+    }
+
+    function printCurrentLabel() {
+      window.print();
+    }
+
+    // --- RENDERIZAÇÃO DA TABELA ---
+    function setFilter(filter) {
+      currentFilter = filter;
+      const tabAll = document.getElementById('tab-all');
+      const tabBorrowed = document.getElementById('tab-borrowed');
+      const tabReturned = document.getElementById('tab-returned');
+
+      const activeClass = "px-3 py-1.5 rounded-lg bg-white text-slate-900 shadow-sm transition";
+      const inactiveClass = "px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition";
+
+      tabAll.className = filter === 'all' ? activeClass : inactiveClass;
+      tabBorrowed.className = filter === 'Emprestado' ? activeClass : inactiveClass;
+      tabReturned.className = filter === 'Devolvido' ? activeClass : inactiveClass;
+
+      renderTable();
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('records-table-body');
+      const search = (document.getElementById('search-input').value || '').toLowerCase().trim();
+      tbody.innerHTML = '';
+
+      let filtered = records;
+      if (currentFilter !== 'all') {
+        filtered = filtered.filter(r => r.status === currentFilter);
+      }
+
+      if (search) {
+        filtered = filtered.filter(r => 
+          (r.code && r.code.toLowerCase().includes(search)) ||
+          (r.desc && r.desc.toLowerCase().includes(search)) ||
+          (r.requester && r.requester.toLowerCase().includes(search)) ||
+          (r.obs && r.obs.toLowerCase().includes(search))
+        );
+      }
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="text-center py-10 text-slate-400">
+              <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 opacity-40"></i>
+              Nenhuma movimentação encontrada.
+            </td>
+          </tr>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      filtered.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50/80 transition duration-150";
+
+        const isBorrowed = r.status === 'Emprestado';
+        const badgeClass = isBorrowed 
+          ? 'bg-amber-100 text-amber-800 border border-amber-200' 
+          : 'bg-emerald-100 text-emerald-800 border border-emerald-200';
+
+        tr.innerHTML = `
+          <td class="p-3 pl-4 font-mono font-bold text-brand-700">
+            <button onclick="openHistoryModal(${jsStringAttribute(r.code)})" class="hover:underline flex items-center gap-1" title="Ver histórico deste item">
+              ${escapeHtml(r.code)}
+              <i data-lucide="info" class="w-3 h-3 text-slate-400"></i>
+            </button>
+          </td>
+          <td class="p-3 font-medium text-slate-800">
+            <div>${escapeHtml(r.desc)}</div>
+            ${r.obs ? `<div class="text-[11px] text-slate-400 truncate max-w-xs mt-0.5" title="${escapeHtml(r.obs)}">${escapeHtml(r.obs)}</div>` : ''}
+          </td>
+          <td class="p-3 text-slate-700">${escapeHtml(r.requester)}</td>
+          <td class="p-3 text-xs text-slate-500 font-mono">${escapeHtml(r.withdrawalDate)}</td>
+          <td class="p-3 text-xs text-slate-500 font-mono">${r.returnDate || '<span class="text-slate-300">-</span>'}</td>
+          <td class="p-3 text-center">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${badgeClass}">
+              ${escapeHtml(r.status)}
+            </span>
+          </td>
+          <td class="p-3 pr-4 text-center">
+            <div class="flex items-center justify-center gap-1">
+              ${isBorrowed ? `
+                <button onclick="openReturnModal(${r.id})" title="Confirmar Devolução" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 p-1.5 rounded-lg transition border border-emerald-200">
+                  <i data-lucide="check" class="w-4 h-4"></i>
+                </button>
+              ` : ''}
+              <button onclick="openLabelGeneratorModal(${jsStringAttribute(r.code)}, ${jsStringAttribute(r.desc)})" title="Imprimir Etiqueta" class="hover:bg-purple-50 text-slate-400 hover:text-purple-600 p-1.5 rounded-lg transition">
+                <i data-lucide="printer" class="w-4 h-4"></i>
+              </button>
+              <button onclick="deleteRecord(${r.id})" title="Excluir Registro" class="hover:bg-rose-50 text-slate-400 hover:text-rose-600 p-1.5 rounded-lg transition">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      lucide.createIcons();
+    }
+
+    function updateStats() {
+      const total = records.length;
+      const borrowed = records.filter(r => r.status === 'Emprestado').length;
+      const returned = records.filter(r => r.status === 'Devolvido').length;
+
+      document.getElementById('stat-total').innerText = total;
+      document.getElementById('stat-borrowed').innerText = borrowed;
+      document.getElementById('stat-returned').innerText = returned;
+
+      document.getElementById('count-all').innerText = total;
+      document.getElementById('count-borrowed').innerText = borrowed;
+      document.getElementById('count-returned').innerText = returned;
+    }
+
+    // --- MODAL DE DEVOLUÇÃO RÁPIDA ---
+    function openReturnModal(id) {
+      const record = records.find(r => r.id === id);
+      if (!record) return;
+
+      pendingReturnId = id;
+      document.getElementById('return-modal-equip').innerText = `${record.code} - ${record.desc}`;
+      document.getElementById('return-modal-requester').innerText = `Solicitante: ${record.requester} (Retirado em ${record.withdrawalDate})`;
+      document.getElementById('return-modal-obs').value = '';
+      
+      document.getElementById('return-modal').showModal();
+    }
+
+    function closeReturnModal() {
+      document.getElementById('return-modal').close();
+      pendingReturnId = null;
+    }
+
+    function confirmReturnAction() {
+      if (!pendingReturnId) return;
+
+      const record = records.find(r => r.id === pendingReturnId);
+      if (record) {
+        const now = new Date().toLocaleString('pt-BR');
+        const obs = document.getElementById('return-modal-obs').value.trim();
+
+        record.returnDate = now;
+        record.status = 'Devolvido';
+        if (obs) {
+          record.obs = record.obs ? `${record.obs} | Dev: ${obs}` : `Dev: ${obs}`;
+        }
+
+        saveLocalData();
+        renderTable();
+        updateStats();
+        triggerFeedback('success');
+        showToast(`Devolução de ${record.code} confirmada!`, 'success');
+
+        queueSync({
+          action: 'return',
+          id: record.id,
+          code: record.code,
+          returnDate: now,
+          obs: obs
+        });
+      }
+
+      closeReturnModal();
+    }
+
+    function deleteRecord(id) {
+      if (confirm('Deseja realmente excluir este registro de movimentação?')) {
+        records = records.filter(r => r.id !== id);
+        saveLocalData();
+        renderTable();
+        updateStats();
+        showToast('Registro excluído com sucesso.', 'info');
+        queueSync({ action: 'delete', id: id });
+      }
+    }
+
+    // --- CATÁLOGO DE INVENTÁRIO ---
+    function openInventoryModal() {
+      renderInventoryTable();
+      document.getElementById('inventory-modal').showModal();
+    }
+
+    function closeInventoryModal() {
+      document.getElementById('inventory-modal').close();
+    }
+
+    function renderInventoryTable() {
+      const tbody = document.getElementById('inventory-table-body');
+      tbody.innerHTML = '';
+
+      if (inventory.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-slate-400">Nenhum equipamento cadastrado.</td></tr>`;
+        return;
+      }
+
+      inventory.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50";
+        tr.innerHTML = `
+          <td class="p-3 font-mono font-bold text-indigo-700">
+            <button onclick="openHistoryModal(${jsStringAttribute(item.code)})" class="hover:underline flex items-center gap-1">
+              ${escapeHtml(item.code)}
+            </button>
+          </td>
+          <td class="p-3">${escapeHtml(item.desc)}</td>
+          <td class="p-3 text-slate-500">${item.category || 'Equipamento'}</td>
+          <td class="p-3 text-center">
+            <span class="px-2 py-0.5 rounded text-[11px] font-semibold ${item.status === 'Emprestado' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">
+              ${item.status || 'Disponível'}
+            </span>
+          </td>
+          <td class="p-3 text-center">
+            <button onclick="closeInventoryModal(); openLabelGeneratorModal(${jsStringAttribute(item.code)}, ${jsStringAttribute(item.desc)});" class="text-purple-600 hover:text-purple-800 p-1 font-semibold text-xs" title="Gerar Etiqueta">
+              <i data-lucide="printer" class="w-4 h-4 inline"></i>
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      lucide.createIcons();
+    }
+
+    function handleNewInventorySubmit(e) {
+      e.preventDefault();
+      const code = document.getElementById('new-inv-code').value.trim().toUpperCase();
+      const desc = document.getElementById('new-inv-desc').value.trim();
+      if (!code || !desc) return;
+
+      const newItem = { code, desc, category: "Equipamento", serialNumber: "", status: "Disponível" };
+      const idx = inventory.findIndex(i => i.code.toUpperCase() === code);
+      if (idx !== -1) {
+        inventory[idx] = newItem;
+      } else {
+        inventory.push(newItem);
+      }
+
+      localStorage.setItem('ti_inventory_catalog', JSON.stringify(inventory));
+      renderInventoryTable();
+      showToast(`Equipamento ${code} salvo no catálogo!`, 'success');
+      queueSync({ action: 'saveEquipment', ...newItem });
+
+      document.getElementById('new-inv-code').value = '';
+      document.getElementById('new-inv-desc').value = '';
+    }
+
+    // --- GOOGLE APPS SCRIPT / SINCRONIZAÇÃO ---
+    function openConfigModal() {
+      document.getElementById('sheets-url-input').value = googleScriptUrl;
+      document.getElementById('config-modal').showModal();
+    }
+
+    function closeConfigModal() {
+      document.getElementById('config-modal').close();
+    }
+
+    function saveSheetsConfig() {
+      const url = document.getElementById('sheets-url-input').value.trim();
+      googleScriptUrl = url;
+      localStorage.setItem('ti_google_script_url', url);
+      closeConfigModal();
+
+      if (url) {
+        updateConnectionStatus('connected');
+        showToast('URL configurada! Sincronizando...', 'success');
+        syncWithSheets(true);
+      } else {
+        updateConnectionStatus('local');
+        showToast('Operando em Modo Local.', 'info');
+      }
+    }
+
+    async function testSheetsConnection() {
+      const url = document.getElementById('sheets-url-input').value.trim();
+      if (!url) {
+        showToast('Por favor, informe a URL do Apps Script.', 'warning');
+        return;
+      }
+
+      const btn = document.getElementById('btn-test-connection');
+      btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Testando...`;
+      lucide.createIcons();
+
+      try {
+        const resp = await fetch(url, { method: 'GET' });
+        const data = await resp.json();
+        if (data.status === 'success' || Array.isArray(data.records) || Array.isArray(data)) {
+          showToast('Conexão estabelecida com sucesso com a planilha!', 'success');
+        } else {
+          showToast('Planilha respondeu, mas verifique os dados.', 'warning');
+        }
+      } catch (err) {
+        showToast('Falha na conexão: Verifique a URL e as permissões de acesso.', 'error');
+      } finally {
+        btn.innerHTML = `<i data-lucide="activity" class="w-4 h-4"></i> Testar Conexão`;
+        lucide.createIcons();
+      }
+    }
+
+    function updateConnectionStatus(status) {
+      const dot = document.getElementById('status-indicator-dot');
+      const text = document.getElementById('status-indicator-text');
+      const badge = document.getElementById('btn-status-badge');
+
+      if (status === 'connected') {
+        dot.className = "w-2 h-2 rounded-full bg-emerald-400";
+        text.innerText = "Sheets Conectado";
+        badge.className = "px-2.5 py-1.5 rounded-xl flex items-center gap-2 transition bg-emerald-500/20 text-emerald-100 border border-emerald-400/30 hover:bg-emerald-500/30 font-medium";
+      } else if (status === 'syncing') {
+        dot.className = "w-2 h-2 rounded-full bg-sky-400 animate-ping";
+        text.innerText = "Sincronizando...";
+      } else {
+        dot.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
+        text.innerText = "Modo Local";
+        badge.className = "px-2.5 py-1.5 rounded-xl flex items-center gap-2 transition bg-amber-500/20 text-amber-100 border border-amber-400/30 hover:bg-amber-500/30 font-medium";
+      }
+    }
+
+    async function syncWithSheets(userTriggered = false) {
+      if (!googleScriptUrl) {
+        if (userTriggered) openConfigModal();
+        return;
+      }
+
+      const syncIcon = document.getElementById('icon-sync');
+      syncIcon.classList.add('animate-spin');
+      updateConnectionStatus('syncing');
+
+      try {
+        const resp = await fetch(googleScriptUrl, { method: 'GET' });
+        const data = await resp.json();
+
+        if (data.records && Array.isArray(data.records)) {
+          records = data.records.map(r => ({
+            id: Number(r.id) || Date.now() + Math.random(),
+            code: String(r.code || ''),
+            desc: String(r.desc || ''),
+            requester: String(r.requester || ''),
+            withdrawalDate: String(r.withdrawalDate || ''),
+            returnDate: r.returnDate ? String(r.returnDate) : null,
+            status: String(r.status || 'Devolvido'),
+            obs: String(r.obs || '')
+          }));
+        }
+
+        if (data.inventory && Array.isArray(data.inventory) && data.inventory.length > 0) {
+          inventory = data.inventory;
+          localStorage.setItem('ti_inventory_catalog', JSON.stringify(inventory));
+        }
+
+        if (data.employees && Array.isArray(data.employees) && data.employees.length > 0) {
+          employees = data.employees;
+          localStorage.setItem('ti_employees_catalog', JSON.stringify(employees));
+        }
+
+        saveLocalData();
+        renderTable();
+        updateStats();
+        updateConnectionStatus('connected');
+
+        if (userTriggered) {
+          showToast('Dados atualizados com a planilha!', 'success');
+        }
+
+      } catch (err) {
+        console.warn('Erro ao sincronizar com Google Sheets:', err);
+        updateConnectionStatus('local');
+        if (userTriggered) {
+          showToast('Erro ao sincronizar com Google Sheets. Verifique sua conexão.', 'error');
+        }
+      } finally {
+        syncIcon.classList.remove('animate-spin');
+      }
+    }
+
+    async function postToGoogleSheets(payload) {
+      if (!googleScriptUrl) return;
+      return fetch(googleScriptUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    }
+
+    function saveLocalData() {
+      localStorage.setItem('ti_equipment_records', JSON.stringify(records));
+    }
+
+    function downloadTemplateSpreadsheet() {
+      const wb = XLSX.utils.book_new();
+
+      const movData = [{
+        "ID": "1727180000000",
+        "Código": "EQ-1001",
+        "Equipamento": "Notebook Dell Latitude 3420 i5 16GB",
+        "Solicitante": "João Pedro Silva (Desenvolvimento)",
+        "Data Retirada": new Date().toLocaleString('pt-BR'),
+        "Data Devolução": "",
+        "Status": "Emprestado",
+        "Observações": "Acompanha fonte carregadora e mouse"
+      }];
+      const wsMov = XLSX.utils.json_to_sheet(movData);
+      wsMov['!cols'] = [{ wch: 16 }, { wch: 14 }, { wch: 34 }, { wch: 28 }, { wch: 20 }, { wch: 20 }, { wch: 14 }, { wch: 32 }];
+      XLSX.utils.book_append_sheet(wb, wsMov, "Movimentacoes");
+
+      const invData = [
+        { "Código": "EQ-1001", "Descrição": "Notebook Dell Latitude 3420 i5 16GB", "Categoria": "Notebook", "Número de Série": "SN-DELL-8831", "Status": "Emprestado" },
+        { "Código": "EQ-1002", "Descrição": "Notebook Lenovo ThinkPad E14 Ryzen 7", "Categoria": "Notebook", "Número de Série": "SN-LEN-4412", "Status": "Disponível" },
+        { "Código": "EQ-1003", "Descrição": "Monitor LG 24 polegadas IPS 75Hz", "Categoria": "Monitor", "Número de Série": "SN-LG-9921", "Status": "Disponível" },
+        { "Código": "EQ-1004", "Descrição": "Kit Teclado + Mouse sem fio Dell KM3322W", "Categoria": "Periférico", "Número de Série": "SN-ACC-1102", "Status": "Disponível" },
+        { "Código": "EQ-1005", "Descrição": "Adaptador USB-C para HDMI / VGA Dell", "Categoria": "Acessório", "Número de Série": "SN-ADP-5521", "Status": "Disponível" },
+        { "Código": "EQ-1006", "Descrição": "Headset Jabra Evolve 20 USB", "Categoria": "Áudio", "Número de Série": "SN-JAB-7733", "Status": "Disponível" }
+      ];
+      const wsInv = XLSX.utils.json_to_sheet(invData);
+      wsInv['!cols'] = [{ wch: 14 }, { wch: 35 }, { wch: 16 }, { wch: 20 }, { wch: 14 }];
+      XLSX.utils.book_append_sheet(wb, wsInv, "Inventario");
+
+      const colabData = [
+        { "Matrícula": "101", "Nome": "João Pedro Silva", "Setor": "Desenvolvimento", "Email": "joao.silva@empresa.com" },
+        { "Matrícula": "102", "Nome": "Mariana Costa", "Setor": "RH / Gente & Gestão", "Email": "mariana.costa@empresa.com" },
+        { "Matrícula": "103", "Nome": "Lucas Fernandes", "Setor": "Financeiro", "Email": "lucas.fernandes@empresa.com" },
+        { "Matrícula": "104", "Nome": "Camila Rocha", "Setor": "Operações", "Email": "camila.rocha@empresa.com" }
+      ];
+      const wsColab = XLSX.utils.json_to_sheet(colabData);
+      wsColab['!cols'] = [{ wch: 12 }, { wch: 26 }, { wch: 24 }, { wch: 28 }];
+      XLSX.utils.book_append_sheet(wb, wsColab, "Colaboradores");
+
+      XLSX.writeFile(wb, "Planilha_Controle_Equipamentos_TI.xlsx");
+      showToast("Planilha modelo baixada com sucesso!", "success");
+    }
+
+  </script>
+</body>
+</html>
+
