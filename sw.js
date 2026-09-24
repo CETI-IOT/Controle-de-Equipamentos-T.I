@@ -1,4 +1,4 @@
-const CACHE_NAME = 'equip-ti-v3';
+const CACHE_NAME = 'equip-ti-v4';
 const STATIC_ASSETS = [
   './',
   './index.html',
