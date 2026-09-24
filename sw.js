@@ -1,7 +1,8 @@
-const CACHE_NAME = 'equip-ti-v4';
+const CACHE_NAME = 'equip-ti-v5';
 const STATIC_ASSETS = [
   './',
   './index.html',
+  './assets/app.css',
   './manifest.json',
   './icons/icon.svg'
 ];
@@ -86,4 +87,3 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
-
