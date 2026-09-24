@@ -1110,7 +1110,7 @@
             Html5QrcodeSupportedFormats.EAN_13,
             Html5QrcodeSupportedFormats.EAN_8,
             Html5QrcodeSupportedFormats.UPC_A,
-          Html5QrcodeSupportedFormats.UPC_E,
+            Html5QrcodeSupportedFormats.UPC_E,
             Html5QrcodeSupportedFormats.ITF
           ],
           useBarCodeDetectorIfSupported: true,
@@ -1122,6 +1122,9 @@
     }
 
     function launchCamera(cameraConfig) {
+      const requestedCameraConstraints = typeof cameraConfig === 'string'
+        ? { deviceId: { exact: cameraConfig } }
+        : cameraConfig;
       const config = {
         fps: 12,
         qrbox: (viewfinderWidth, viewfinderHeight) => {
@@ -1133,7 +1136,11 @@
           };
         },
         aspectRatio: 1.33,
-        videoConstraints: { width: { ideal: 1280 }, height: { ideal: 720 } }
+        videoConstraints: {
+          ...requestedCameraConstraints,
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
       };
 
       cameraStartInProgress = true;
