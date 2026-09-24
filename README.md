@@ -32,7 +32,7 @@ O site publicado fica acessível pela internet. Não inclua senhas, tokens ou in
 2. Em **Extensões > Apps Script**, cole o conteúdo de `google-apps-script.js` e salve.
 3. Execute `setupPlanilhaCompleta` pelo editor para criar as abas e cabeçalhos. Autorize o script quando o Google solicitar.
 4. Publique como **App da Web**, executando como sua conta, e defina o acesso conforme a política da sua organização.
-5. Copie a URL `/exec` gerada, abra **Configurações** no aplicativo e salve a URL.
+5. Copie a URL `/exec` gerada, abra **Configurações** no aplicativo e salve a URL. Ela fica guardada no armazenamento local desse navegador e será reutilizada nas próximas visitas nesse mesmo perfil e dispositivo; em outro dispositivo ou perfil, será necessário configurá-la novamente.
 
 > O acesso público ao App da Web pode expor dados da planilha a qualquer pessoa que obtenha a URL. Use apenas se isso for permitido pela política da organização e não armazene dados pessoais ou confidenciais sem controles adequados.
 
@@ -45,3 +45,4 @@ Leitura de códigos e impressão de etiquetas dependem das bibliotecas e permiss
 ## Verificação rápida
 
 Confira no navegador os fluxos de retirada, devolução, busca, inventário e histórico. Para a integração, teste uma planilha descartável: registre uma movimentação, atualize a página e confirme que ela aparece na planilha e no aplicativo. Teste também leitura de câmera e impressão no dispositivo final.
+
