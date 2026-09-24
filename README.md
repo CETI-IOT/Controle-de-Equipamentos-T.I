@@ -24,7 +24,7 @@ O repositório inclui um workflow em `.github/workflows/pages.yml` que publica o
 2. No GitHub, abra **Settings > Pages** e selecione **GitHub Actions** como fonte de publicação.
 3. Acompanhe a execução em **Actions**. Quando ela terminar, o endereço do site aparece no ambiente `github-pages` e em **Settings > Pages**.
 
-O site publicado fica acessível pela internet. Não inclua senhas, tokens ou informações confidenciais no repositório. Configure a URL do Apps Script pelo painel do próprio aplicativo.
+O site publicado fica acessível pela internet. A URL pública do Apps Script é configurada como padrão no HTML para conectar automaticamente todos os visitantes. Como o navegador precisa receber essa URL, uma variável de ambiente do GitHub Actions não a tornaria secreta: o valor continuaria visível no HTML publicado. A URL dá acesso às operações expostas pelo Apps Script; mantenha a implantação pública somente se estiver autorizado a compartilhar esses dados e operações com qualquer visitante.
 
 ## Conectar ao Google Sheets
 
@@ -32,7 +32,7 @@ O site publicado fica acessível pela internet. Não inclua senhas, tokens ou in
 2. Em **Extensões > Apps Script**, cole o conteúdo de `google-apps-script.js` e salve.
 3. Execute `setupPlanilhaCompleta` pelo editor para criar as abas e cabeçalhos. Autorize o script quando o Google solicitar.
 4. Publique como **App da Web**, executando como sua conta, e defina o acesso conforme a política da sua organização.
-5. Copie a URL `/exec` gerada, abra **Configurações** no aplicativo e salve a URL. Ela fica guardada no armazenamento local desse navegador e será reutilizada nas próximas visitas nesse mesmo perfil e dispositivo; em outro dispositivo ou perfil, será necessário configurá-la novamente.
+5. O site já usa a URL `/exec` configurada como padrão. Se publicar uma implantação diferente, atualize `DEFAULT_GOOGLE_SCRIPT_URL` em `index.html`; a alteração se aplica a visitantes que ainda não tenham substituído a URL nas configurações locais.
 
 > O acesso público ao App da Web pode expor dados da planilha a qualquer pessoa que obtenha a URL. Use apenas se isso for permitido pela política da organização e não armazene dados pessoais ou confidenciais sem controles adequados.
 
