@@ -17,22 +17,6 @@
   <link rel="stylesheet" href="./assets/app.css">
 
   <style>
-    /* Laser animado de leitura */
-    @keyframes scanline {
-      0% { transform: translateY(0); opacity: 0.9; }
-      50% { transform: translateY(160px); opacity: 1; }
-      100% { transform: translateY(0); opacity: 0.9; }
-    }
-    .scan-laser {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 3px;
-      background: #ec4899;
-      box-shadow: 0 0 12px #f43f5e, 0 0 4px #fb7185;
-      animation: scanline 2s infinite ease-in-out;
-    }
     dialog::backdrop {
       background: rgba(15, 23, 42, 0.7);
       backdrop-filter: blur(4px);
@@ -122,6 +106,8 @@
       .metric-card > div:last-child { min-width: 0; }
       #records-pagination { align-items: stretch; }
       #records-pagination button { flex: 1; }
+      #camera-controls { display: grid; grid-template-columns: minmax(0, 1fr) 44px 64px; }
+      #camera-select { min-height: 44px; }
     }
     dialog { margin: auto; overflow-y: auto; overscroll-behavior: contain; }
     @media (max-width: 767px) {
@@ -290,7 +276,7 @@
         <!-- Header do Scanner -->
         <div class="flex justify-between items-center mb-3">
           <div class="flex items-center gap-2">
-            <span id="scanner-status-dot" class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+            <span id="scanner-status-dot" class="w-2 h-2 rounded-full bg-slate-300"></span>
             <h2 class="font-bold text-slate-800 text-sm flex items-center gap-1.5">
               <i data-lucide="scan" class="w-4 h-4 text-brand-600"></i> <span id="scanner-status">Preparando leitor…</span>
             </h2>
@@ -300,6 +286,26 @@
           </button>
         </div>
 
+        <div class="grid grid-cols-2 gap-2 mb-3" role="group" aria-label="Fonte de leitura">
+          <button type="button" id="reader-source-camera" onclick="setScannerSource('camera')" class="min-h-11 rounded-xl bg-brand-600 text-white text-xs font-semibold shadow-sm flex items-center justify-center gap-1.5">
+            <i data-lucide="camera" class="w-4 h-4"></i> Câmera
+          </button>
+          <button type="button" id="reader-source-external" onclick="setScannerSource('external')" class="min-h-11 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200 flex items-center justify-center gap-1.5">
+            <i data-lucide="keyboard" class="w-4 h-4"></i> Leitor externo
+          </button>
+        </div>
+
+        <div id="external-reader-panel" class="hidden rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
+          <label for="external-reader-input" class="block text-xs font-semibold text-slate-700 mb-1.5">Conecte o leitor USB ou sem fio</label>
+          <input id="external-reader-input" type="text" inputmode="none" autocomplete="off" autocapitalize="off" spellcheck="false"
+            aria-describedby="external-reader-hint" onkeydown="handleExternalReaderKeydown(event)" oninput="scheduleExternalReaderSubmit(event)"
+            class="w-full min-h-12 border border-slate-300 rounded-xl bg-white px-3 py-2 font-mono text-base focus:outline-none focus:ring-2 focus:ring-brand-500"
+            placeholder="Toque aqui e faça uma leitura">
+          <p id="external-reader-hint" class="mt-2 text-[11px] leading-relaxed text-slate-500">Leitores que digitam como teclado são reconhecidos na primeira leitura. Configure o leitor para enviar Enter ao terminar, se possível.</p>
+          <p id="external-reader-status" role="status" class="mt-2 text-xs font-medium text-slate-600">Aguardando leitura do leitor externo.</p>
+        </div>
+
+        <div id="camera-scan-panel">
         <!-- Modos de Detecção -->
         <div class="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl mb-3 text-[11px] font-semibold text-slate-600 text-center">
           <button type="button" onclick="setScanMode('auto')" id="mode-auto" class="py-1.5 rounded-lg bg-white text-brand-700 shadow-sm transition">
@@ -316,24 +322,21 @@
         <!-- Viewfinder da Câmera -->
         <div class="relative w-full rounded-xl overflow-hidden bg-slate-950 aspect-[4/3] flex items-center justify-center border border-slate-300 shadow-inner">
           <div id="reader" class="w-full h-full"></div>
-          <div id="scanner-laser" class="scan-laser pointer-events-none"></div>
 
           <!-- Mira Visual Central -->
-          <div id="scan-frame-guide" class="absolute inset-x-8 inset-y-12 border-2 border-dashed border-white/60 rounded-xl pointer-events-none transition-all flex items-center justify-center">
-            <span class="text-[10px] text-white/80 bg-black/50 px-2 py-0.5 rounded backdrop-blur-sm">
-              Alinhe o código na moldura
-            </span>
+          <div id="scan-frame-guide" class="absolute inset-x-8 inset-y-12 border border-white/70 rounded-xl pointer-events-none transition-all flex items-center justify-center">
+            <span class="text-[10px] text-white/90 bg-black/50 px-2 py-1 rounded-md">Centralize o código</span>
           </div>
         </div>
 
         <!-- Controles da Câmera: Lanterna, Câmera e Cancelar -->
-        <div class="mt-3 flex items-center justify-between text-xs gap-2">
+        <div id="camera-controls" class="mt-3 flex items-center justify-between text-xs gap-2">
           
           <!-- Seletor de Câmera -->
           <div class="flex items-center gap-1.5 flex-1 min-w-0">
             <i data-lucide="camera" class="w-4 h-4 text-slate-500 shrink-0"></i>
-            <select id="camera-select" onchange="switchCamera(this.value)" class="bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-slate-700 text-xs w-full truncate">
-              <option value="">Detectando câmeras...</option>
+            <select id="camera-select" aria-label="Selecionar câmera" onchange="switchCamera(this.value)" disabled class="bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-slate-700 text-xs w-full truncate">
+              <option value="">Preparando câmeras…</option>
             </select>
           </div>
 
@@ -346,6 +349,7 @@
           <button type="button" onclick="stopScanner()" class="px-3 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 rounded-lg font-semibold text-xs transition">
             Fechar
           </button>
+        </div>
         </div>
       </div>
 
@@ -386,12 +390,13 @@
               <input type="text" id="equip-code" required placeholder="Ex: EQ-1001 ou leia a barra" 
                 oninput="handleCodeInput(this.value)"
                 class="flex-1 border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 uppercase font-mono font-medium">
-              <button type="button" onclick="startScanner('equip-code')" class="bg-brand-600 hover:bg-brand-700 active:scale-95 text-white px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 text-xs font-bold shadow-sm" title="Escanear com câmera">
+              <button type="button" onclick="startScanner('equip-code')" class="bg-brand-600 hover:bg-brand-700 active:scale-95 text-white px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 text-xs font-bold shadow-sm" title="Abrir leitor de código">
                 <i data-lucide="scan" class="w-4 h-4"></i>
                 <span>Escanear</span>
               </button>
             </div>
-            <p class="mt-1 text-[11px] text-slate-400">Leitor sem fio: clique no campo e escaneie. Se ele enviar Enter, o foco avança automaticamente.</p>
+            <p class="mt-1 text-[11px] text-slate-400">Leitor USB ou sem fio: clique no campo e escaneie. Se enviar Enter, o foco avança automaticamente.</p>
+            <p id="hardware-reader-inline-status" role="status" class="mt-1 text-[11px] text-slate-500">Leitor externo pronto para uso; será reconhecido na primeira leitura.</p>
           </div>
 
           <!-- Descrição do Equipamento -->
@@ -915,6 +920,12 @@
     let isTorchOn = false;
     let cameraStartInProgress = false;
     let scannerStopRequested = false;
+    let cameraSwitchInProgress = false;
+    let activeCameraId = null;
+    let currentScannerSource = 'camera';
+    let hardwareReaderDetected = false;
+    const hardwareScanSequences = new WeakMap();
+    let externalReaderIdleTimer = null;
     const appScriptLoads = new Map();
     let searchRenderTimer = null;
     let currentPage = 0;
@@ -984,6 +995,11 @@
       updateOfflineBanner();
       ['equip-code', 'equip-desc', 'requester-id'].forEach(id => {
         document.getElementById(id).addEventListener('keydown', handleHardwareScannerEnter);
+      });
+      navigator.mediaDevices?.addEventListener?.('devicechange', () => {
+        if (currentScannerSource === 'camera' && !document.getElementById('qr-scanner-card').classList.contains('hidden')) {
+          refreshCameraOptions(activeCameraId || '');
+        }
       });
 
       // Monitor de status de rede
@@ -1130,7 +1146,58 @@
       const status = document.getElementById('scanner-status');
       const dot = document.getElementById('scanner-status-dot');
       if (status) status.innerText = message;
-      if (dot) dot.className = `w-2.5 h-2.5 rounded-full ${active ? 'bg-emerald-500 animate-ping' : 'bg-amber-400 animate-pulse'}`;
+      if (dot) dot.className = `w-2 h-2 rounded-full ${active ? 'bg-emerald-500' : 'bg-slate-300'}`;
+    }
+
+    function updateScannerSourceUI(source) {
+      currentScannerSource = source;
+      const cameraPanel = document.getElementById('camera-scan-panel');
+      const externalPanel = document.getElementById('external-reader-panel');
+      const cameraButton = document.getElementById('reader-source-camera');
+      const externalButton = document.getElementById('reader-source-external');
+      const activeClass = 'min-h-11 rounded-xl bg-brand-600 text-white text-xs font-semibold shadow-sm flex items-center justify-center gap-1.5';
+      const inactiveClass = 'min-h-11 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200 flex items-center justify-center gap-1.5';
+
+      cameraPanel.classList.toggle('hidden', source !== 'camera');
+      externalPanel.classList.toggle('hidden', source !== 'external');
+      cameraButton.className = source === 'camera' ? activeClass : inactiveClass;
+      externalButton.className = source === 'external' ? activeClass : inactiveClass;
+    }
+
+    async function setScannerSource(source) {
+      if (source === 'camera') {
+        await startScanner(targetInputForQR || 'equip-code', 'camera');
+        return;
+      }
+
+      await activateExternalReader();
+    }
+
+    async function activateExternalReader() {
+      updateScannerSourceUI('external');
+      scannerStopRequested = true;
+      if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
+        cameraSwitchInProgress = true;
+        try {
+          await html5QrcodeScanner.stop();
+        } catch (error) {
+          console.warn('Não foi possível encerrar a câmera:', error);
+        }
+        activeCameraId = null;
+        cameraSwitchInProgress = false;
+      }
+
+      if (currentScannerSource !== 'external') {
+        scannerStopRequested = false;
+        if (!cameraStartInProgress && !html5QrcodeScanner?.isScanning) {
+          await startScanner(targetInputForQR || 'equip-code');
+        }
+        return;
+      }
+
+      setScannerStatus(hardwareReaderDetected ? 'Leitor externo pronto' : 'Aguardando leitor externo', hardwareReaderDetected);
+      const input = document.getElementById('external-reader-input');
+      window.setTimeout(() => input.focus({ preventScroll: true }), 40);
     }
 
     function setScanMode(mode) {
@@ -1155,30 +1222,84 @@
         guide.className = "absolute inset-x-8 inset-y-12 border-2 border-dashed border-white/60 rounded-xl pointer-events-none transition-all flex items-center justify-center";
       }
 
-      // Reinicia câmera com nova geometria se estiver aberta
-      if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
-        const select = document.getElementById('camera-select');
-        const cameraId = select.value || { facingMode: "environment" };
-        html5QrcodeScanner.stop().then(() => launchCamera(cameraId));
-      }
+      restartCameraForScanMode();
     }
 
-    async function startScanner(inputId) {
+    function restartCameraForScanMode() {
+      if (!html5QrcodeScanner || !html5QrcodeScanner.isScanning || cameraSwitchInProgress) return;
+      const cameraId = activeCameraId || document.getElementById('camera-select').value;
+      cameraSwitchInProgress = true;
+      setScannerStatus('Atualizando leitor…');
+      html5QrcodeScanner.stop()
+        .then(() => launchCamera(cameraId || { facingMode: 'environment' }, cameraId || null))
+        .catch(error => {
+          cameraSwitchInProgress = false;
+          setScannerStatus('Câmera ativa', true);
+          console.warn('Não foi possível reiniciar o leitor:', error);
+        });
+    }
+
+    async function refreshCameraOptions(preferredCameraId = '') {
+      const select = document.getElementById('camera-select');
+      let devices = [];
+
+      try {
+        if (window.Html5Qrcode && typeof Html5Qrcode.getCameras === 'function') {
+          devices = await Html5Qrcode.getCameras();
+        }
+        if (!devices.length && navigator.mediaDevices?.enumerateDevices) {
+          const mediaDevices = await navigator.mediaDevices.enumerateDevices();
+          devices = mediaDevices.filter(device => device.kind === 'videoinput');
+        }
+      } catch (error) {
+        console.warn('Não foi possível listar as câmeras:', error);
+      }
+
+      select.replaceChildren();
+      if (!devices.length) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'Nenhuma câmera encontrada';
+        select.appendChild(option);
+        select.disabled = true;
+        return;
+      }
+
+      devices.forEach((device, index) => {
+        const option = document.createElement('option');
+        option.value = device.id || device.deviceId;
+        option.textContent = device.label || `Câmera ${index + 1}`;
+        select.appendChild(option);
+      });
+
+      const runningDeviceId = html5QrcodeScanner?.getRunningTrackSettings?.()?.deviceId || activeCameraId;
+      const desiredId = preferredCameraId || runningDeviceId || select.options[0].value;
+      select.value = Array.from(select.options).some(option => option.value === desiredId)
+        ? desiredId
+        : select.options[0].value;
+      select.disabled = devices.length < 2 || !html5QrcodeScanner?.isScanning;
+    }
+
+    async function startScanner(inputId, sourceOverride = null) {
       targetInputForQR = inputId;
       const scannerCard = document.getElementById('qr-scanner-card');
+      scannerCard.classList.remove('hidden');
+      const preferredSource = sourceOverride || (hardwareReaderDetected || currentScannerSource === 'external' ? 'external' : 'camera');
+      if (preferredSource === 'external') {
+        await activateExternalReader();
+        return;
+      }
+      updateScannerSourceUI('camera');
 
       if (cameraStartInProgress) {
         scannerStopRequested = false;
-        scannerCard.classList.remove('hidden');
         setScannerStatus('Carregando leitor…');
         return;
       }
       if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
-        scannerCard.classList.remove('hidden');
         return;
       }
 
-      scannerCard.classList.remove('hidden');
       setScannerStatus('Carregando leitor…');
       scannerStopRequested = false;
       cameraStartInProgress = true;
@@ -1222,10 +1343,8 @@
       launchCamera({ facingMode: "environment" });
     }
 
-    function launchCamera(cameraConfig) {
-      const requestedCameraConstraints = typeof cameraConfig === 'string'
-        ? { deviceId: { exact: cameraConfig } }
-        : cameraConfig;
+    function launchCamera(cameraConfig, fallbackCameraId = null) {
+      const requestedCameraId = typeof cameraConfig === 'string' ? cameraConfig : null;
       const config = {
         fps: 12,
         qrbox: (viewfinderWidth, viewfinderHeight) => {
@@ -1238,46 +1357,56 @@
         },
         aspectRatio: 1.33,
         videoConstraints: {
-          ...requestedCameraConstraints,
+          ...(requestedCameraId ? { deviceId: { exact: requestedCameraId } } : cameraConfig),
           width: { ideal: 1280 },
           height: { ideal: 720 }
         }
       };
 
       cameraStartInProgress = true;
-      html5QrcodeScanner.start(cameraConfig, config, onScanSuccess)
-        .then(() => {
+      return html5QrcodeScanner.start(cameraConfig, config, onScanSuccess)
+        .then(async () => {
           cameraStartInProgress = false;
-          if (scannerStopRequested) {
-            stopScanner();
+          if (scannerStopRequested || currentScannerSource !== 'camera') {
+            try { await html5QrcodeScanner.stop(); } catch (error) { /* Câmera já encerrada. */ }
+            activeCameraId = null;
+            cameraSwitchInProgress = false;
             return;
           }
-          setScannerStatus('Leitor ativo', true);
-          // Disponibiliza a escolha de outra câmera sem atrasar a inicialização da traseira.
-          Html5Qrcode.getCameras().then(devices => {
-            const select = document.getElementById('camera-select');
-            const activeCameraId = html5QrcodeScanner.getRunningTrackSettings()?.deviceId;
-            select.innerHTML = '';
-            devices.forEach((device, index) => {
-              const option = document.createElement('option');
-              option.value = device.id;
-              option.textContent = device.label || `Câmera ${index + 1}`;
-              select.appendChild(option);
-            });
-            if (activeCameraId && devices.some(device => device.id === activeCameraId)) select.value = activeCameraId;
-          }).catch(() => {});
+          activeCameraId = html5QrcodeScanner.getRunningTrackSettings?.()?.deviceId || requestedCameraId || null;
+          cameraSwitchInProgress = false;
+          setScannerStatus('Câmera ativa', true);
+          await refreshCameraOptions(activeCameraId || '');
         })
-        .catch(err => {
+        .catch(async err => {
           cameraStartInProgress = false;
-          setScannerStatus('Não foi possível iniciar');
-          showToast('Não foi possível acessar a câmera: ' + err, 'error');
-          stopScanner();
+          cameraSwitchInProgress = false;
+          if (scannerStopRequested || currentScannerSource !== 'camera') return;
+          if (fallbackCameraId && fallbackCameraId !== requestedCameraId && currentScannerSource === 'camera') {
+            showToast('Não foi possível abrir essa câmera. Mantive a câmera anterior.', 'warning');
+            return launchCamera(fallbackCameraId);
+          }
+          activeCameraId = null;
+          setScannerStatus('Não foi possível abrir a câmera');
+          await refreshCameraOptions();
+          showToast('Não foi possível acessar a câmera. Você ainda pode usar o leitor externo.', 'error');
+          console.warn('Falha ao iniciar a câmera:', err);
         });
     }
 
-    function switchCamera(cameraId) {
-      if (html5QrcodeScanner) {
-        html5QrcodeScanner.stop().then(() => launchCamera(cameraId));
+    async function switchCamera(cameraId) {
+      if (!cameraId || !html5QrcodeScanner?.isScanning || cameraSwitchInProgress || cameraId === activeCameraId) return;
+      const previousCameraId = activeCameraId;
+      cameraSwitchInProgress = true;
+      setScannerStatus('Trocando câmera…');
+      try {
+        await html5QrcodeScanner.stop();
+        await launchCamera(cameraId, previousCameraId);
+      } catch (error) {
+        cameraSwitchInProgress = false;
+        document.getElementById('camera-select').value = previousCameraId || '';
+        setScannerStatus('Câmera ativa', true);
+        showToast('Não foi possível trocar a câmera.', 'warning');
       }
     }
 
@@ -1315,8 +1444,96 @@
       stopScanner();
     }
 
+    function recordHardwareScannerKey(event) {
+      const input = event.currentTarget;
+      const now = performance.now();
+      let sequence = hardwareScanSequences.get(input);
+
+      if (event.key === 'Enter') {
+        hardwareScanSequences.delete(input);
+        if (!sequence || sequence.characters < 4) return false;
+        const elapsed = sequence.lastAt - sequence.startedAt;
+        const averageGap = elapsed / Math.max(1, sequence.characters - 1);
+        return elapsed <= 1800 && averageGap <= 90;
+      }
+
+      if (event.key.length !== 1 || event.ctrlKey || event.metaKey || event.altKey) return false;
+      if (!sequence || now - sequence.lastAt > 180) {
+        sequence = { startedAt: now, lastAt: now, characters: 0 };
+      }
+      sequence.lastAt = now;
+      sequence.characters++;
+      hardwareScanSequences.set(input, sequence);
+      return false;
+    }
+
+    function markHardwareReaderDetected(announce = true) {
+      if (hardwareReaderDetected) return;
+      hardwareReaderDetected = true;
+      const inlineStatus = document.getElementById('hardware-reader-inline-status');
+      const externalStatus = document.getElementById('external-reader-status');
+      if (inlineStatus) {
+        inlineStatus.innerText = 'Leitor externo reconhecido nesta sessão. Você pode usar sem abrir a câmera.';
+        inlineStatus.className = 'mt-1 text-[11px] font-medium text-emerald-700';
+      }
+      if (externalStatus) {
+        externalStatus.innerText = 'Leitor externo reconhecido. Pronto para novas leituras.';
+        externalStatus.className = 'mt-2 text-xs font-medium text-emerald-700';
+      }
+      if (currentScannerSource === 'external') setScannerStatus('Leitor externo detectado', true);
+      if (announce) showToast('Leitor externo reconhecido. Você pode ler sem usar a câmera.', 'success');
+    }
+
+    function handleExternalReaderKeydown(event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        completeExternalReaderScan();
+        return;
+      }
+      recordHardwareScannerKey(event);
+    }
+
+    function scheduleExternalReaderSubmit(event) {
+      clearTimeout(externalReaderIdleTimer);
+      const input = event.currentTarget;
+      const sequence = hardwareScanSequences.get(input);
+      if (!input.value.trim() || !sequence || sequence.characters < 4) return;
+      const elapsed = sequence.lastAt - sequence.startedAt;
+      const averageGap = elapsed / Math.max(1, sequence.characters - 1);
+      if (elapsed > 1800 || averageGap > 90) return;
+
+      externalReaderIdleTimer = window.setTimeout(() => {
+        if (input.value.trim()) completeExternalReaderScan();
+      }, 260);
+    }
+
+    function completeExternalReaderScan() {
+      clearTimeout(externalReaderIdleTimer);
+      const readerInput = document.getElementById('external-reader-input');
+      const code = readerInput.value.trim();
+      if (!code) return;
+      readerInput.value = '';
+      hardwareScanSequences.delete(readerInput);
+      markHardwareReaderDetected(false);
+
+      const target = document.getElementById(targetInputForQR);
+      if (target) {
+        target.value = code;
+        target.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      triggerFeedback('success');
+      setScannerStatus('Leitor externo pronto', true);
+      const status = document.getElementById('external-reader-status');
+      status.innerText = 'Leitura recebida. Pronto para o próximo código.';
+      status.className = 'mt-2 text-xs font-medium text-emerald-700';
+      showToast('Código recebido pelo leitor externo.', 'success');
+      readerInput.focus({ preventScroll: true });
+    }
+
     function handleHardwareScannerEnter(event) {
+      const externalScan = recordHardwareScannerKey(event);
       if (event.key !== 'Enter') return;
+      if (externalScan) markHardwareReaderDetected();
       event.preventDefault();
 
       const input = event.currentTarget;
@@ -1342,11 +1559,19 @@
       scannerStopRequested = true;
       if (html5QrcodeScanner) {
         if (!html5QrcodeScanner.isScanning) {
+          activeCameraId = null;
           document.getElementById('qr-scanner-card').classList.add('hidden');
           return;
         }
-        html5QrcodeScanner.stop().then(() => document.getElementById('qr-scanner-card').classList.add('hidden'))
-          .catch(() => document.getElementById('qr-scanner-card').classList.add('hidden'));
+        html5QrcodeScanner.stop().then(() => {
+          activeCameraId = null;
+          cameraSwitchInProgress = false;
+          document.getElementById('qr-scanner-card').classList.add('hidden');
+        }).catch(() => {
+          activeCameraId = null;
+          cameraSwitchInProgress = false;
+          document.getElementById('qr-scanner-card').classList.add('hidden');
+        });
       } else {
         document.getElementById('qr-scanner-card').classList.add('hidden');
       }
