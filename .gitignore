@@ -7,3 +7,5 @@
 Thumbs.db
 Desktop.ini
 
+# Dependências locais de compilação
+node_modules/
