@@ -695,7 +695,7 @@
           </label>
           <input type="url" id="sheets-url-input" placeholder="https://script.google.com/macros/s/.../exec" 
             class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono text-xs">
-          <p class="text-xs text-slate-400 mt-1">Ao salvar, a conexão fica guardada neste navegador e será reutilizada nas próximas visitas.</p>
+          <p class="text-xs text-slate-400 mt-1">A conexão já vem configurada para todos. Se você trocar a URL, a alteração fica salva apenas neste navegador.</p>
         </div>
 
         <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs space-y-1.5 text-slate-600">
@@ -911,7 +911,10 @@
     let currentMovementType = 'retirada';
     let currentFilter = 'all';
     let currentScanMode = 'auto'; // 'auto', 'barcode', 'qrcode'
-    let googleScriptUrl = localStorage.getItem('ti_google_script_url') || '';
+    // Endpoint público da implantação Apps Script, chamado diretamente pelo navegador.
+    const DEFAULT_GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzrxNa7jObcixRz3pR5Z5UgkH7ZFhCnXGhZJ4-KMvEtki-ClilyIu5-SOWdADYd_bc/exec';
+    const savedGoogleScriptUrl = localStorage.getItem('ti_google_script_url');
+    let googleScriptUrl = savedGoogleScriptUrl === null ? DEFAULT_GOOGLE_SCRIPT_URL : savedGoogleScriptUrl;
     let isSoundEnabled = localStorage.getItem('ti_sound_enabled') !== 'false';
     
     let html5QrcodeScanner = null;
