@@ -14,38 +14,7 @@
   <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
   <link rel="apple-touch-icon" href="./icons/icon.svg">
 
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              50: '#eef2ff',
-              100: '#e0e7ff',
-              500: '#6366f1',
-              600: '#4f46e5',
-              700: '#4338ca',
-              800: '#3730a3',
-              900: '#312e81',
-            }
-          }
-        }
-      }
-    }
-  </script>
-
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- Html5-qrcode para leitura de QR Code e Código de Barras (1D e 2D) -->
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  <!-- SheetJS (XLSX) para Importação/Exportação Excel -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <!-- JsBarcode para Gerador de Código de Barras -->
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-  <!-- QRCode.js para Gerador de QR Code em Etiquetas -->
-  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <link rel="stylesheet" href="./assets/app.css">
 
   <style>
     /* Laser animado de leitura */
@@ -83,9 +52,17 @@
     :focus-visible { outline: 3px solid rgba(99, 102, 241, .45); outline-offset: 2px; }
     dialog { max-height: min(90dvh, 52rem); }
     #records-table-body tr { transition: background-color .16s ease, box-shadow .16s ease; }
-    @media (max-width: 767px) {
+    @media (max-width: 1023px) {
       #records-table-head { display: none; }
       #records-table-body { display: grid; gap: .7rem; padding: .7rem; }
+      #inventory-table-head { display: none; }
+      #inventory-table-body { display: grid; gap: .6rem; padding: .6rem; }
+      #inventory-table-body tr { display: block; overflow: hidden; border: 1px solid var(--app-border); border-radius: .85rem; background: white; }
+      #inventory-table-body td { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .6rem .75rem; border-bottom: 1px solid #f1f5f9; text-align: right; }
+      #inventory-table-body td::before { content: attr(data-label); flex: 0 0 auto; color: #64748b; font-size: .65rem; font-weight: 700; text-align: left; text-transform: uppercase; }
+      #inventory-table-body td:last-child { border-bottom: 0; }
+      #inventory-table-body td[colspan] { display: block; text-align: center; }
+      #inventory-table-body td[colspan]::before { content: none; }
       #records-table-body tr { display: block; overflow: hidden; border: 1px solid var(--app-border); border-radius: 1rem; background: white; box-shadow: 0 2px 8px rgba(15, 23, 42, .04); }
       #records-table-body td { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .65rem .8rem; border-bottom: 1px solid #f1f5f9; text-align: right; }
       #records-table-body td::before { content: attr(data-label); flex: 0 0 auto; color: #64748b; font-size: .65rem; font-weight: 700; letter-spacing: .04em; text-align: left; text-transform: uppercase; }
@@ -96,7 +73,7 @@
       #records-table-body td[colspan]::before { content: none; }
       #records-table-body td[colspan] i { margin-left: auto; margin-right: auto; }
     }
-    @media (max-width: 767px) {
+    @media (max-width: 1199px) {
       body { padding-bottom: calc(6rem + env(safe-area-inset-bottom)); }
       #mobile-nav {
         box-sizing: border-box;
@@ -108,6 +85,7 @@
         align-items: center;
         gap: .25rem;
       }
+      #toast-container { bottom: calc(5.25rem + env(safe-area-inset-bottom)); }
       #mobile-nav button {
         min-width: 0;
         width: 100%;
@@ -125,15 +103,30 @@
         border-radius: 9999px;
       }
     }
-    @media (min-width: 768px) and (max-width: 1023px) {
+    @media (min-width: 768px) and (max-width: 1199px) {
       main { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
       main > section { grid-column: 1 / -1; min-width: 0; }
       header > div { align-items: flex-start; }
+      #records-table-body td { padding: .8rem 1rem; }
     }
-    @media (min-width: 1024px) and (max-width: 1279px) {
+    @media (min-width: 1200px) and (max-width: 1279px) {
       main { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 1.25rem; }
       main > section:first-child { grid-column: span 4 / span 4; min-width: 0; }
       main > section:last-child { grid-column: span 8 / span 8; min-width: 0; }
+    }
+    @media (max-width: 420px) {
+      #mobile-nav { gap: .1rem; }
+      #mobile-nav button:not([aria-label]) { font-size: .7rem; }
+      .metric-card { flex-direction: column; align-items: flex-start; gap: .4rem; padding: .65rem; }
+      .metric-card > div:first-child { padding: .45rem; }
+      .metric-card > div:last-child { min-width: 0; }
+      #records-pagination { align-items: stretch; }
+      #records-pagination button { flex: 1; }
+    }
+    dialog { margin: auto; overflow-y: auto; overscroll-behavior: contain; }
+    @media (max-width: 767px) {
+      dialog { width: calc(100vw - 1rem); border-radius: 1rem; }
+      #toast-container { right: 0; max-width: none; padding-inline: .75rem; }
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
@@ -297,9 +290,9 @@
         <!-- Header do Scanner -->
         <div class="flex justify-between items-center mb-3">
           <div class="flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+            <span id="scanner-status-dot" class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
             <h2 class="font-bold text-slate-800 text-sm flex items-center gap-1.5">
-              <i data-lucide="scan" class="w-4 h-4 text-brand-600"></i> Leitor Ativo
+              <i data-lucide="scan" class="w-4 h-4 text-brand-600"></i> <span id="scanner-status">Preparando leitor…</span>
             </h2>
           </div>
           <button onclick="stopScanner()" class="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition">
@@ -448,9 +441,9 @@
     <section class="md:col-span-3 xl:col-span-8 space-y-4 sm:space-y-5 min-w-0">
 
       <!-- Cards de Métricas -->
-      <div class="grid grid-cols-3 gap-2 sm:gap-3.5">
+      <div id="stats-grid" class="grid grid-cols-3 gap-2 sm:gap-3.5">
         
-        <div class="bg-white p-2.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2 sm:gap-3.5 min-w-0">
+        <div class="metric-card bg-white p-2.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2 sm:gap-3.5 min-w-0">
           <div class="p-2 sm:p-3 bg-brand-50 text-brand-600 rounded-xl shrink-0">
             <i data-lucide="layers" class="w-5 h-5"></i>
           </div>
@@ -460,7 +453,7 @@
           </div>
         </div>
 
-        <div class="bg-white p-2.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2 sm:gap-3.5 min-w-0">
+        <div class="metric-card bg-white p-2.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2 sm:gap-3.5 min-w-0">
           <div class="p-2 sm:p-3 bg-amber-50 text-amber-600 rounded-xl shrink-0">
             <i data-lucide="clock" class="w-5 h-5"></i>
           </div>
@@ -470,7 +463,7 @@
           </div>
         </div>
 
-        <div class="bg-white p-2.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2 sm:gap-3.5 min-w-0">
+        <div class="metric-card bg-white p-2.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2 sm:gap-3.5 min-w-0">
           <div class="p-2 sm:p-3 bg-emerald-50 text-emerald-600 rounded-xl shrink-0">
             <i data-lucide="check-check" class="w-5 h-5"></i>
           </div>
@@ -503,7 +496,7 @@
 
           <!-- Busca Rápida -->
           <div class="relative w-full md:w-72">
-            <input type="search" id="search-input" oninput="renderTable()" placeholder="Buscar código, pessoa, item..." 
+            <input type="search" id="search-input" oninput="scheduleSearchRender()" placeholder="Buscar código, pessoa, item..." 
               class="pl-9 pr-3 py-2.5 text-sm border border-slate-200 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white shadow-sm">
             <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2 sm:top-2.5"></i>
           </div>
@@ -529,6 +522,13 @@
             </tbody>
           </table>
         </div>
+        <nav id="records-pagination" aria-label="Paginação de movimentações" class="hidden flex items-center justify-between gap-3 px-3 sm:px-4 py-3 border-t border-slate-100 bg-white">
+          <span id="records-page-status" aria-live="polite" class="text-xs text-slate-500"></span>
+          <div class="flex gap-2">
+            <button type="button" onclick="changeRecordsPage(-1)" id="records-page-prev" class="px-3 py-2 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 disabled:opacity-40" disabled>Anterior</button>
+            <button type="button" onclick="changeRecordsPage(1)" id="records-page-next" class="px-3 py-2 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 disabled:opacity-40" disabled>Próxima</button>
+          </div>
+        </nav>
 
       </div>
 
@@ -537,7 +537,7 @@
   </main>
 
   <!-- ================= BARRA DE NAVEGAÇÃO INFERIOR (MOBILE FIRST) ================= -->
-  <nav id="mobile-nav" aria-label="Navegação principal" class="md:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200 z-40 shadow-lg">
+  <nav id="mobile-nav" aria-label="Navegação principal" class="hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200 z-40 shadow-lg">
     <button onclick="window.scrollTo({top: 0, behavior: 'smooth'})" class="flex flex-col items-center gap-0.5 text-slate-600 hover:text-brand-700">
       <i data-lucide="home" class="w-5 h-5"></i>
       <span class="text-[10px] font-medium">Início</span>
@@ -709,21 +709,6 @@
           </ol>
         </div>
 
-        <!-- Download do Modelo Pronto -->
-        <div class="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div>
-            <p class="font-bold text-emerald-900 text-xs flex items-center gap-1.5">
-              <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600"></i>
-              Planilha Pronta para Download
-            </p>
-            <p class="text-[11px] text-emerald-700">Baixe o arquivo com as 3 abas e envie para seu Google Drive.</p>
-          </div>
-          <button onclick="downloadTemplateSpreadsheet()" type="button" class="w-full sm:w-auto px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-sm transition flex items-center justify-center gap-1.5 shrink-0">
-            <i data-lucide="download" class="w-3.5 h-3.5"></i>
-            Baixar (.xlsx)
-          </button>
-        </div>
-
         <div class="flex justify-between items-center gap-3 pt-2">
           <button onclick="testSheetsConnection()" id="btn-test-connection" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl transition flex items-center gap-1.5 text-xs">
             <i data-lucide="activity" class="w-4 h-4"></i>
@@ -809,9 +794,9 @@
         </div>
 
         <!-- Tabela do Inventário -->
-        <div class="max-h-80 overflow-y-auto border border-slate-200 rounded-xl">
-          <table class="w-full text-left text-xs text-slate-600">
-            <thead class="bg-slate-100 text-[11px] font-bold uppercase text-slate-500 border-b border-slate-200 sticky top-0">
+          <div class="max-h-80 overflow-y-auto border border-slate-200 rounded-xl">
+            <table class="w-full text-left text-xs text-slate-600">
+            <thead id="inventory-table-head" class="bg-slate-100 text-[11px] font-bold uppercase text-slate-500 border-b border-slate-200 sticky top-0">
               <tr>
                 <th class="p-3">Código</th>
                 <th class="p-3">Descrição</th>
@@ -825,6 +810,13 @@
             </tbody>
           </table>
         </div>
+        <nav id="inventory-pagination" aria-label="Paginação do inventário" class="hidden flex items-center justify-between gap-3 p-3 border-t border-slate-100">
+          <span id="inventory-page-status" aria-live="polite" class="text-xs text-slate-500"></span>
+          <div class="flex gap-2">
+            <button type="button" onclick="changeInventoryPage(-1)" id="inventory-page-prev" class="px-3 py-2 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 disabled:opacity-40" disabled>Anterior</button>
+            <button type="button" onclick="changeInventoryPage(1)" id="inventory-page-next" class="px-3 py-2 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 disabled:opacity-40" disabled>Próxima</button>
+          </div>
+        </nav>
       </div>
     </div>
   </dialog>
@@ -923,10 +915,68 @@
     let isTorchOn = false;
     let cameraStartInProgress = false;
     let scannerStopRequested = false;
+    const appScriptLoads = new Map();
+    let searchRenderTimer = null;
+    let currentPage = 0;
+    let inventoryPage = 0;
+    const PAGE_SIZE = 50;
+
+    function loadAppScript(id, src, availableCheck) {
+      if (availableCheck()) return Promise.resolve();
+      if (appScriptLoads.has(id)) return appScriptLoads.get(id);
+
+      const promise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.id = id;
+        script.src = src;
+        script.async = true;
+        script.onload = resolve;
+        script.onerror = () => {
+          appScriptLoads.delete(id);
+          script.remove();
+          reject(new Error('Não foi possível carregar um recurso necessário.'));
+        };
+        document.head.appendChild(script);
+      });
+
+      appScriptLoads.set(id, promise);
+      return promise;
+    }
+
+    async function ensureScannerLibrary() {
+      await loadAppScript('html5-qrcode-library', 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js', () => typeof Html5Qrcode !== 'undefined');
+    }
+
+    async function ensureLabelLibraries() {
+      await Promise.all([
+        loadAppScript('jsbarcode-library', 'https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js', () => typeof JsBarcode !== 'undefined'),
+        loadAppScript('qrcode-library', 'https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js', () => typeof QRCode !== 'undefined')
+      ]);
+    }
+
+    function renderLucideIcons() {
+      if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+      }
+    }
+
+    function loadLucideIconsAfterRender() {
+      const load = () => loadAppScript(
+        'lucide-icons',
+        'https://unpkg.com/lucide@latest',
+        () => window.lucide && typeof window.lucide.createIcons === 'function'
+      ).then(renderLucideIcons).catch(error => console.warn('Ícones opcionais indisponíveis:', error));
+
+      if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(load, { timeout: 1200 });
+      } else {
+        window.setTimeout(load, 300);
+      }
+    }
 
     // --- INICIALIZAÇÃO ---
     window.addEventListener('DOMContentLoaded', () => {
-      lucide.createIcons();
+      loadLucideIconsAfterRender();
       updateAudioIcon();
       renderTable();
       updateStats();
@@ -1017,8 +1067,20 @@
       const icon = document.getElementById('icon-audio');
       if (icon) {
         icon.setAttribute('data-lucide', isSoundEnabled ? 'volume-2' : 'volume-x');
-        lucide.createIcons();
+        renderLucideIcons();
       }
+    }
+
+    const inlineIconPaths = {
+      info: '<circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path>',
+      check: '<path d="m5 12 4 4L19 6"></path>',
+      printer: '<path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><path d="M6 14h12v8H6z"></path>',
+      trash: '<path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="m19 6-1 14H6L5 6"></path><path d="M10 11v5M14 11v5"></path>',
+      inbox: '<path d="M4 4h16l2 11v5H2v-5L4 4Z"></path><path d="M2 15h6l2 3h4l2-3h6"></path>'
+    };
+
+    function inlineIcon(name, className = 'w-4 h-4') {
+      return `<svg aria-hidden="true" class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inlineIconPaths[name] || inlineIconPaths.info}</svg>`;
     }
 
     // --- NOTIFICAÇÕES MODERNAS (TOASTS) ---
@@ -1034,20 +1096,19 @@
       };
 
       const icons = {
-        success: 'check-circle-2',
-        error: 'alert-triangle',
-        warning: 'alert-circle',
-        info: 'info'
+        success: '✓',
+        error: '!',
+        warning: '!',
+        info: 'i'
       };
 
       toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-xl border text-xs sm:text-sm font-semibold transition-all duration-300 transform translate-y-2 opacity-0 ${colors[type] || colors.info}`;
       toast.innerHTML = `
-        <i data-lucide="${icons[type] || 'info'}" class="w-4 h-4 shrink-0"></i>
+        <span aria-hidden="true" class="w-5 h-5 shrink-0 rounded-full border border-current/50 inline-flex items-center justify-center text-[11px]">${icons[type] || 'i'}</span>
         <span class="flex-1">${escapeHtml(message)}</span>
       `;
 
       container.appendChild(toast);
-      lucide.createIcons();
 
       requestAnimationFrame(() => {
         toast.classList.remove('translate-y-2', 'opacity-0');
@@ -1063,6 +1124,13 @@
     function openGlobalScanner() {
       startScanner('equip-code');
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function setScannerStatus(message, active = false) {
+      const status = document.getElementById('scanner-status');
+      const dot = document.getElementById('scanner-status-dot');
+      if (status) status.innerText = message;
+      if (dot) dot.className = `w-2.5 h-2.5 rounded-full ${active ? 'bg-emerald-500 animate-ping' : 'bg-amber-400 animate-pulse'}`;
     }
 
     function setScanMode(mode) {
@@ -1095,13 +1163,38 @@
       }
     }
 
-    function startScanner(inputId) {
+    async function startScanner(inputId) {
       targetInputForQR = inputId;
       const scannerCard = document.getElementById('qr-scanner-card');
-      scannerCard.classList.remove('hidden');
-      scannerStopRequested = false;
 
-      if (cameraStartInProgress || (html5QrcodeScanner && html5QrcodeScanner.isScanning)) return;
+      if (cameraStartInProgress) {
+        scannerStopRequested = false;
+        scannerCard.classList.remove('hidden');
+        setScannerStatus('Carregando leitor…');
+        return;
+      }
+      if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
+        scannerCard.classList.remove('hidden');
+        return;
+      }
+
+      scannerCard.classList.remove('hidden');
+      setScannerStatus('Carregando leitor…');
+      scannerStopRequested = false;
+      cameraStartInProgress = true;
+      try {
+        await ensureScannerLibrary();
+      } catch (error) {
+        cameraStartInProgress = false;
+        setScannerStatus('Leitor indisponível');
+        showToast('Não foi possível carregar o leitor. Confira a conexão com a internet.', 'error');
+        return;
+      }
+
+      if (scannerStopRequested) {
+        cameraStartInProgress = false;
+        return;
+      }
 
       // Configuração completa de formatos de código (1D e 2D)
       if (!html5QrcodeScanner) {
@@ -1110,17 +1203,22 @@
             Html5QrcodeSupportedFormats.QR_CODE,
             Html5QrcodeSupportedFormats.CODE_128,
             Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.CODE_93,
+            Html5QrcodeSupportedFormats.CODABAR,
             Html5QrcodeSupportedFormats.EAN_13,
             Html5QrcodeSupportedFormats.EAN_8,
             Html5QrcodeSupportedFormats.UPC_A,
             Html5QrcodeSupportedFormats.UPC_E,
-            Html5QrcodeSupportedFormats.ITF
+            Html5QrcodeSupportedFormats.ITF,
+            Html5QrcodeSupportedFormats.DATA_MATRIX,
+            Html5QrcodeSupportedFormats.PDF_417
           ],
           useBarCodeDetectorIfSupported: true,
           verbose: false
         });
       }
       // Inicia logo com a câmera traseira; a enumeração de câmeras não bloqueia o primeiro quadro.
+      cameraStartInProgress = false;
       launchCamera({ facingMode: "environment" });
     }
 
@@ -1154,6 +1252,7 @@
             stopScanner();
             return;
           }
+          setScannerStatus('Leitor ativo', true);
           // Disponibiliza a escolha de outra câmera sem atrasar a inicialização da traseira.
           Html5Qrcode.getCameras().then(devices => {
             const select = document.getElementById('camera-select');
@@ -1170,6 +1269,7 @@
         })
         .catch(err => {
           cameraStartInProgress = false;
+          setScannerStatus('Não foi possível iniciar');
           showToast('Não foi possível acessar a câmera: ' + err, 'error');
           stopScanner();
         });
@@ -1189,7 +1289,7 @@
       }).then(() => {
         document.getElementById('icon-torch').setAttribute('data-lucide', isTorchOn ? 'zap' : 'flashlight');
         document.getElementById('btn-torch').classList.toggle('bg-amber-100', isTorchOn);
-        lucide.createIcons();
+        renderLucideIcons();
       }).catch(err => {
         showToast('Lanterna não disponível nesta câmera.', 'warning');
       });
@@ -1232,7 +1332,8 @@
       } else if (input.id === 'equip-desc') {
         document.getElementById('requester-id').focus();
       } else if (input.id === 'requester-id') {
-        handleRequesterInput(value);
+        const alreadyMatched = employees.some(employee => value === `${employee.name} (${employee.department})`);
+        if (!alreadyMatched) handleRequesterInput(value);
         document.getElementById('movement-obs').focus();
       }
     }
@@ -1269,12 +1370,14 @@
       }
     }
 
+    let lastWarnedActiveLoanCode = '';
+
     function handleCodeInput(code) {
       const trimmed = code.trim().toLowerCase();
       const badge = document.getElementById('catalog-match-badge');
       const descInput = document.getElementById('equip-desc');
 
-      const foundItem = inventory.find(i => i.code.toLowerCase() === trimmed);
+      const foundItem = inventory.find(i => String(i.code || '').toLowerCase() === trimmed);
       if (foundItem) {
         descInput.value = foundItem.desc;
         badge.classList.remove('hidden');
@@ -1284,10 +1387,13 @@
       }
 
       if (currentMovementType === 'retirada' && trimmed.length > 2) {
-        const activeLoan = records.find(r => r.code.toLowerCase() === trimmed && r.status === 'Emprestado');
-        if (activeLoan) {
+        const activeLoan = records.find(r => String(r.code || '').toLowerCase() === trimmed && r.status === 'Emprestado');
+        if (activeLoan && lastWarnedActiveLoanCode !== trimmed) {
           showToast(`Atenção: ${activeLoan.code} já consta emprestado para ${activeLoan.requester}!`, 'warning');
+          lastWarnedActiveLoanCode = trimmed;
         }
+      } else {
+        lastWarnedActiveLoanCode = '';
       }
     }
 
@@ -1295,7 +1401,7 @@
       const trimmed = val.trim().toLowerCase();
       const badge = document.getElementById('colab-match-badge');
       
-      const foundColab = employees.find(e => e.id.toLowerCase() === trimmed || e.name.toLowerCase().includes(trimmed));
+      const foundColab = employees.find(e => String(e.id || '').toLowerCase() === trimmed || String(e.name || '').trim().toLowerCase() === trimmed);
       if (foundColab && trimmed.length >= 2) {
         document.getElementById('requester-id').value = `${foundColab.name} (${foundColab.department})`;
         badge.classList.remove('hidden');
@@ -1486,7 +1592,13 @@
     }
 
     // --- GERADOR E IMPRESSÃO DE ETIQUETAS DE PATRIMÔNIO ---
-    function openLabelGeneratorModal(code = null, desc = null) {
+    async function openLabelGeneratorModal(code = null, desc = null) {
+      try {
+        await ensureLabelLibraries();
+      } catch (error) {
+        showToast('Não foi possível carregar as ferramentas de etiqueta. Confira sua conexão.', 'error');
+        return;
+      }
       if (code) {
         document.getElementById('label-code').value = code;
         document.getElementById('label-desc').value = desc || '';
@@ -1555,6 +1667,7 @@
     // --- RENDERIZAÇÃO DA TABELA ---
     function setFilter(filter) {
       currentFilter = filter;
+      currentPage = 0;
       const tabAll = document.getElementById('tab-all');
       const tabBorrowed = document.getElementById('tab-borrowed');
       const tabReturned = document.getElementById('tab-returned');
@@ -1569,10 +1682,37 @@
       renderTable();
     }
 
+    function scheduleSearchRender() {
+      currentPage = 0;
+      clearTimeout(searchRenderTimer);
+      searchRenderTimer = setTimeout(renderTable, 120);
+    }
+
+    function changeRecordsPage(offset) {
+      currentPage = Math.max(0, currentPage + offset);
+      renderTable();
+    }
+
+    function updateRecordsPagination(total) {
+      const nav = document.getElementById('records-pagination');
+      const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+      currentPage = Math.min(currentPage, pages - 1);
+      if (total <= PAGE_SIZE) {
+        nav.classList.add('hidden');
+        return;
+      }
+
+      const first = currentPage * PAGE_SIZE + 1;
+      const last = Math.min(total, first + PAGE_SIZE - 1);
+      document.getElementById('records-page-status').innerText = `Exibindo ${first}–${last} de ${total}`;
+      document.getElementById('records-page-prev').disabled = currentPage === 0;
+      document.getElementById('records-page-next').disabled = currentPage >= pages - 1;
+      nav.classList.remove('hidden');
+    }
+
     function renderTable() {
       const tbody = document.getElementById('records-table-body');
       const search = (document.getElementById('search-input').value || '').toLowerCase().trim();
-      tbody.innerHTML = '';
 
       let filtered = records;
       if (currentFilter !== 'all') {
@@ -1592,16 +1732,23 @@
         tbody.innerHTML = `
           <tr>
             <td colspan="7" class="text-center py-10 text-slate-400">
-              <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 opacity-40"></i>
+              ${inlineIcon('inbox', 'w-8 h-8 mx-auto mb-2 opacity-40')}
               Nenhuma movimentação encontrada.
             </td>
           </tr>
         `;
-        lucide.createIcons();
+        updateRecordsPagination(0);
         return;
       }
 
-      filtered.forEach(r => {
+      const pageCount = filtered.length;
+      const pages = Math.max(1, Math.ceil(pageCount / PAGE_SIZE));
+      currentPage = Math.min(currentPage, pages - 1);
+      const firstRecord = currentPage * PAGE_SIZE;
+      const visibleRecords = filtered.slice(firstRecord, firstRecord + PAGE_SIZE);
+      const fragment = document.createDocumentFragment();
+
+      visibleRecords.forEach(r => {
         const tr = document.createElement('tr');
         tr.className = "hover:bg-slate-50/80 transition duration-150";
 
@@ -1614,7 +1761,7 @@
             <td data-label="Código" class="p-3 pl-4 font-mono font-bold text-brand-700">
             <button onclick="openHistoryModal(${jsStringAttribute(r.code)})" class="hover:underline flex items-center gap-1" title="Ver histórico deste item">
               ${escapeHtml(r.code)}
-              <i data-lucide="info" class="w-3 h-3 text-slate-400"></i>
+              ${inlineIcon('info', 'w-3 h-3 text-slate-400')}
             </button>
           </td>
           <td data-label="Equipamento" class="p-3 font-medium text-slate-800">
@@ -1633,28 +1780,33 @@
             <div class="flex items-center justify-center gap-1">
               ${isBorrowed ? `
                 <button onclick="openReturnModal(${r.id})" title="Confirmar Devolução" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 p-1.5 rounded-lg transition border border-emerald-200">
-                  <i data-lucide="check" class="w-4 h-4"></i>
+                  ${inlineIcon('check')}
                 </button>
               ` : ''}
               <button onclick="openLabelGeneratorModal(${jsStringAttribute(r.code)}, ${jsStringAttribute(r.desc)})" title="Imprimir Etiqueta" class="hover:bg-purple-50 text-slate-400 hover:text-purple-600 p-1.5 rounded-lg transition">
-                <i data-lucide="printer" class="w-4 h-4"></i>
+                ${inlineIcon('printer')}
               </button>
               <button onclick="deleteRecord(${r.id})" title="Excluir Registro" class="hover:bg-rose-50 text-slate-400 hover:text-rose-600 p-1.5 rounded-lg transition">
-                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                ${inlineIcon('trash')}
               </button>
             </div>
           </td>
         `;
-        tbody.appendChild(tr);
+        fragment.appendChild(tr);
       });
 
-      lucide.createIcons();
+      tbody.replaceChildren(fragment);
+      updateRecordsPagination(pageCount);
     }
 
     function updateStats() {
       const total = records.length;
-      const borrowed = records.filter(r => r.status === 'Emprestado').length;
-      const returned = records.filter(r => r.status === 'Devolvido').length;
+      let borrowed = 0;
+      let returned = 0;
+      records.forEach(record => {
+        if (record.status === 'Emprestado') borrowed++;
+        else if (record.status === 'Devolvido') returned++;
+      });
 
       document.getElementById('stat-total').innerText = total;
       document.getElementById('stat-borrowed').innerText = borrowed;
@@ -1738,38 +1890,60 @@
 
     function renderInventoryTable() {
       const tbody = document.getElementById('inventory-table-body');
-      tbody.innerHTML = '';
+      const pagination = document.getElementById('inventory-pagination');
 
       if (inventory.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-slate-400">Nenhum equipamento cadastrado.</td></tr>`;
+        pagination.classList.add('hidden');
         return;
       }
 
-      inventory.forEach(item => {
+      const total = inventory.length;
+      const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+      inventoryPage = Math.min(inventoryPage, pages - 1);
+      const first = inventoryPage * PAGE_SIZE;
+      const last = Math.min(total, first + PAGE_SIZE);
+      const fragment = document.createDocumentFragment();
+
+      inventory.slice(first, last).forEach(item => {
         const tr = document.createElement('tr');
         tr.className = "hover:bg-slate-50";
         tr.innerHTML = `
-          <td class="p-3 font-mono font-bold text-indigo-700">
+          <td data-label="Código" class="p-3 font-mono font-bold text-indigo-700">
             <button onclick="openHistoryModal(${jsStringAttribute(item.code)})" class="hover:underline flex items-center gap-1">
               ${escapeHtml(item.code)}
             </button>
           </td>
-          <td class="p-3">${escapeHtml(item.desc)}</td>
-          <td class="p-3 text-slate-500">${item.category || 'Equipamento'}</td>
-          <td class="p-3 text-center">
+          <td data-label="Descrição" class="p-3">${escapeHtml(item.desc)}</td>
+          <td data-label="Categoria" class="p-3 text-slate-500">${escapeHtml(item.category || 'Equipamento')}</td>
+          <td data-label="Status" class="p-3 text-center">
             <span class="px-2 py-0.5 rounded text-[11px] font-semibold ${item.status === 'Emprestado' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">
-              ${item.status || 'Disponível'}
+              ${escapeHtml(item.status || 'Disponível')}
             </span>
           </td>
-          <td class="p-3 text-center">
+          <td data-label="Ações" class="p-3 text-center">
             <button onclick="closeInventoryModal(); openLabelGeneratorModal(${jsStringAttribute(item.code)}, ${jsStringAttribute(item.desc)});" class="text-purple-600 hover:text-purple-800 p-1 font-semibold text-xs" title="Gerar Etiqueta">
-              <i data-lucide="printer" class="w-4 h-4 inline"></i>
+              ${inlineIcon('printer', 'w-4 h-4 inline')}
             </button>
           </td>
         `;
-        tbody.appendChild(tr);
+        fragment.appendChild(tr);
       });
-      lucide.createIcons();
+      tbody.replaceChildren(fragment);
+
+      if (total <= PAGE_SIZE) {
+        pagination.classList.add('hidden');
+      } else {
+        document.getElementById('inventory-page-status').innerText = `Exibindo ${first + 1}–${last} de ${total}`;
+        document.getElementById('inventory-page-prev').disabled = inventoryPage === 0;
+        document.getElementById('inventory-page-next').disabled = inventoryPage >= pages - 1;
+        pagination.classList.remove('hidden');
+      }
+    }
+
+    function changeInventoryPage(offset) {
+      inventoryPage = Math.max(0, inventoryPage + offset);
+      renderInventoryTable();
     }
 
     function handleNewInventorySubmit(e) {
@@ -1786,6 +1960,7 @@
         inventory.push(newItem);
       }
 
+      inventoryPage = 0;
       localStorage.setItem('ti_inventory_catalog', JSON.stringify(inventory));
       renderInventoryTable();
       showToast(`Equipamento ${code} salvo no catálogo!`, 'success');
@@ -1830,7 +2005,7 @@
 
       const btn = document.getElementById('btn-test-connection');
       btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Testando...`;
-      lucide.createIcons();
+      renderLucideIcons();
 
       try {
         const resp = await fetch(url, { method: 'GET' });
@@ -1844,7 +2019,7 @@
         showToast('Falha na conexão: Verifique a URL e as permissões de acesso.', 'error');
       } finally {
         btn.innerHTML = `<i data-lucide="activity" class="w-4 h-4"></i> Testar Conexão`;
-        lucide.createIcons();
+        renderLucideIcons();
       }
     }
 
@@ -1938,50 +2113,6 @@
       localStorage.setItem('ti_equipment_records', JSON.stringify(records));
     }
 
-    function downloadTemplateSpreadsheet() {
-      const wb = XLSX.utils.book_new();
-
-      const movData = [{
-        "ID": "1727180000000",
-        "Código": "EQ-1001",
-        "Equipamento": "Notebook Dell Latitude 3420 i5 16GB",
-        "Solicitante": "João Pedro Silva (Desenvolvimento)",
-        "Data Retirada": new Date().toLocaleString('pt-BR'),
-        "Data Devolução": "",
-        "Status": "Emprestado",
-        "Observações": "Acompanha fonte carregadora e mouse"
-      }];
-      const wsMov = XLSX.utils.json_to_sheet(movData);
-      wsMov['!cols'] = [{ wch: 16 }, { wch: 14 }, { wch: 34 }, { wch: 28 }, { wch: 20 }, { wch: 20 }, { wch: 14 }, { wch: 32 }];
-      XLSX.utils.book_append_sheet(wb, wsMov, "Movimentacoes");
-
-      const invData = [
-        { "Código": "EQ-1001", "Descrição": "Notebook Dell Latitude 3420 i5 16GB", "Categoria": "Notebook", "Número de Série": "SN-DELL-8831", "Status": "Emprestado" },
-        { "Código": "EQ-1002", "Descrição": "Notebook Lenovo ThinkPad E14 Ryzen 7", "Categoria": "Notebook", "Número de Série": "SN-LEN-4412", "Status": "Disponível" },
-        { "Código": "EQ-1003", "Descrição": "Monitor LG 24 polegadas IPS 75Hz", "Categoria": "Monitor", "Número de Série": "SN-LG-9921", "Status": "Disponível" },
-        { "Código": "EQ-1004", "Descrição": "Kit Teclado + Mouse sem fio Dell KM3322W", "Categoria": "Periférico", "Número de Série": "SN-ACC-1102", "Status": "Disponível" },
-        { "Código": "EQ-1005", "Descrição": "Adaptador USB-C para HDMI / VGA Dell", "Categoria": "Acessório", "Número de Série": "SN-ADP-5521", "Status": "Disponível" },
-        { "Código": "EQ-1006", "Descrição": "Headset Jabra Evolve 20 USB", "Categoria": "Áudio", "Número de Série": "SN-JAB-7733", "Status": "Disponível" }
-      ];
-      const wsInv = XLSX.utils.json_to_sheet(invData);
-      wsInv['!cols'] = [{ wch: 14 }, { wch: 35 }, { wch: 16 }, { wch: 20 }, { wch: 14 }];
-      XLSX.utils.book_append_sheet(wb, wsInv, "Inventario");
-
-      const colabData = [
-        { "Matrícula": "101", "Nome": "João Pedro Silva", "Setor": "Desenvolvimento", "Email": "joao.silva@empresa.com" },
-        { "Matrícula": "102", "Nome": "Mariana Costa", "Setor": "RH / Gente & Gestão", "Email": "mariana.costa@empresa.com" },
-        { "Matrícula": "103", "Nome": "Lucas Fernandes", "Setor": "Financeiro", "Email": "lucas.fernandes@empresa.com" },
-        { "Matrícula": "104", "Nome": "Camila Rocha", "Setor": "Operações", "Email": "camila.rocha@empresa.com" }
-      ];
-      const wsColab = XLSX.utils.json_to_sheet(colabData);
-      wsColab['!cols'] = [{ wch: 12 }, { wch: 26 }, { wch: 24 }, { wch: 28 }];
-      XLSX.utils.book_append_sheet(wb, wsColab, "Colaboradores");
-
-      XLSX.writeFile(wb, "Planilha_Controle_Equipamentos_TI.xlsx");
-      showToast("Planilha modelo baixada com sucesso!", "success");
-    }
-
   </script>
 </body>
 </html>
-
