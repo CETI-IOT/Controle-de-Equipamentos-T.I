@@ -126,9 +126,14 @@
       }
     }
     @media (min-width: 768px) and (max-width: 1023px) {
-      main { gap: 1rem; }
-      main > section { min-width: 0; }
+      main { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+      main > section { grid-column: 1 / -1; min-width: 0; }
       header > div { align-items: flex-start; }
+    }
+    @media (min-width: 1024px) and (max-width: 1279px) {
+      main { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 1.25rem; }
+      main > section:first-child { grid-column: span 4 / span 4; min-width: 0; }
+      main > section:last-child { grid-column: span 8 / span 8; min-width: 0; }
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
@@ -393,6 +398,7 @@
                 <span>Escanear</span>
               </button>
             </div>
+            <p class="mt-1 text-[11px] text-slate-400">Leitor sem fio: clique no campo e escaneie. Se ele enviar Enter, o foco avança automaticamente.</p>
           </div>
 
           <!-- Descrição do Equipamento -->
@@ -912,6 +918,8 @@
     let targetInputForQR = null;
     let pendingReturnId = null;
     let isTorchOn = false;
+    let cameraStartInProgress = false;
+    let scannerStopRequested = false;
 
     // --- INICIALIZAÇÃO ---
     window.addEventListener('DOMContentLoaded', () => {
@@ -921,6 +929,9 @@
       updateStats();
       renderInventoryTable();
       updateOfflineBanner();
+      ['equip-code', 'equip-desc', 'requester-id'].forEach(id => {
+        document.getElementById(id).addEventListener('keydown', handleHardwareScannerEnter);
+      });
 
       // Monitor de status de rede
       window.addEventListener('online', () => {
@@ -1085,6 +1096,9 @@
       targetInputForQR = inputId;
       const scannerCard = document.getElementById('qr-scanner-card');
       scannerCard.classList.remove('hidden');
+      scannerStopRequested = false;
+
+      if (cameraStartInProgress || (html5QrcodeScanner && html5QrcodeScanner.isScanning)) return;
 
       // Configuração completa de formatos de código (1D e 2D)
       if (!html5QrcodeScanner) {
@@ -1096,58 +1110,56 @@
             Html5QrcodeSupportedFormats.EAN_13,
             Html5QrcodeSupportedFormats.EAN_8,
             Html5QrcodeSupportedFormats.UPC_A,
-            Html5QrcodeSupportedFormats.UPC_E,
-            Html5QrcodeSupportedFormats.ITF,
-            Html5QrcodeSupportedFormats.DATA_MATRIX
+          Html5QrcodeSupportedFormats.UPC_E,
+            Html5QrcodeSupportedFormats.ITF
           ],
+          useBarCodeDetectorIfSupported: true,
           verbose: false
         });
       }
-
-      Html5Qrcode.getCameras().then(devices => {
-        const select = document.getElementById('camera-select');
-        select.innerHTML = '';
-        if (devices && devices.length) {
-          devices.forEach((dev, idx) => {
-            const opt = document.createElement('option');
-            opt.value = dev.id;
-            opt.innerText = dev.label || `Câmera ${idx + 1}`;
-            select.appendChild(opt);
-          });
-
-          // Seleciona preferencialmente a câmera traseira
-          const backCam = devices.find(d => 
-            d.label.toLowerCase().includes('back') || 
-            d.label.toLowerCase().includes('traseira') || 
-            d.label.toLowerCase().includes('environment')
-          );
-          const selectedId = backCam ? backCam.id : devices[0].id;
-          select.value = selectedId;
-          launchCamera(selectedId);
-        } else {
-          launchCamera({ facingMode: "environment" });
-        }
-      }).catch(() => {
-        launchCamera({ facingMode: "environment" });
-      });
+      // Inicia logo com a câmera traseira; a enumeração de câmeras não bloqueia o primeiro quadro.
+      launchCamera({ facingMode: "environment" });
     }
 
     function launchCamera(cameraConfig) {
       const config = {
-        fps: 15,
+        fps: 12,
         qrbox: (viewfinderWidth, viewfinderHeight) => {
-          const widthFactor = currentScanMode === 'qrcode' ? 0.75 : 0.88;
-          const heightFactor = currentScanMode === 'barcode' ? 0.38 : (currentScanMode === 'qrcode' ? 0.75 : 0.55);
+          const widthFactor = currentScanMode === 'qrcode' ? 0.72 : 0.82;
+          const heightFactor = currentScanMode === 'barcode' ? 0.30 : (currentScanMode === 'qrcode' ? 0.72 : 0.46);
           return {
             width: Math.floor(viewfinderWidth * widthFactor),
             height: Math.floor(viewfinderHeight * heightFactor)
           };
         },
-        aspectRatio: 1.33
+        aspectRatio: 1.33,
+        videoConstraints: { width: { ideal: 1280 }, height: { ideal: 720 } }
       };
 
+      cameraStartInProgress = true;
       html5QrcodeScanner.start(cameraConfig, config, onScanSuccess)
+        .then(() => {
+          cameraStartInProgress = false;
+          if (scannerStopRequested) {
+            stopScanner();
+            return;
+          }
+          // Disponibiliza a escolha de outra câmera sem atrasar a inicialização da traseira.
+          Html5Qrcode.getCameras().then(devices => {
+            const select = document.getElementById('camera-select');
+            const activeCameraId = html5QrcodeScanner.getRunningTrackSettings()?.deviceId;
+            select.innerHTML = '';
+            devices.forEach((device, index) => {
+              const option = document.createElement('option');
+              option.value = device.id;
+              option.textContent = device.label || `Câmera ${index + 1}`;
+              select.appendChild(option);
+            });
+            if (activeCameraId && devices.some(device => device.id === activeCameraId)) select.value = activeCameraId;
+          }).catch(() => {});
+        })
         .catch(err => {
+          cameraStartInProgress = false;
           showToast('Não foi possível acessar a câmera: ' + err, 'error');
           stopScanner();
         });
@@ -1193,13 +1205,37 @@
       stopScanner();
     }
 
+    function handleHardwareScannerEnter(event) {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+
+      const input = event.currentTarget;
+      const value = input.value.trim();
+      if (!value) return;
+
+      if (input.id === 'equip-code') {
+        const code = value.toUpperCase();
+        input.value = code;
+        handleCodeInput(code);
+        const knownEquipment = inventory.some(item => String(item.code || '').toUpperCase() === code);
+        document.getElementById(knownEquipment ? 'requester-id' : 'equip-desc').focus();
+      } else if (input.id === 'equip-desc') {
+        document.getElementById('requester-id').focus();
+      } else if (input.id === 'requester-id') {
+        handleRequesterInput(value);
+        document.getElementById('movement-obs').focus();
+      }
+    }
+
     function stopScanner() {
+      scannerStopRequested = true;
       if (html5QrcodeScanner) {
-        html5QrcodeScanner.stop().then(() => {
+        if (!html5QrcodeScanner.isScanning) {
           document.getElementById('qr-scanner-card').classList.add('hidden');
-        }).catch(() => {
-          document.getElementById('qr-scanner-card').classList.add('hidden');
-        });
+          return;
+        }
+        html5QrcodeScanner.stop().then(() => document.getElementById('qr-scanner-card').classList.add('hidden'))
+          .catch(() => document.getElementById('qr-scanner-card').classList.add('hidden'));
       } else {
         document.getElementById('qr-scanner-card').classList.add('hidden');
       }
